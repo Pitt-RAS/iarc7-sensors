@@ -79,6 +79,8 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y python-catkin-pkg python-rosdep python-wstool ros-$ROS_DISTRO-catkin
   - source /opt/ros/$ROS_DISTRO/setup.bash
+  # Install package for i2c headers
+  - sudo apt-get insatll libi2c-dev
   # Prepare rosdep to install dependencies.
   - sudo rosdep init
   - rosdep update
