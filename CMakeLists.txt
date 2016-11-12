@@ -6,6 +6,8 @@ project(iarc7_sensors)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   iarc7_msgs
+  roscpp
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -63,10 +65,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   iarc7_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  iarc7_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -126,16 +128,16 @@ include_directories(
 # add_dependencies(iarc7_sensors ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(iarc7_sensors_node src/iarc7_sensors_node.cpp)
+add_executable(iarc7_sensors_altimeter src/altimeter.cpp src/lidarlite.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(iarc7_sensors_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(iarc7_sensors_altimeter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(iarc7_sensors_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(iarc7_sensors_altimeter
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
@@ -152,7 +154,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS iarc7_sensors iarc7_sensors_node
+# install(TARGETS iarc7_sensors iarc7_sensors_altimeter
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
