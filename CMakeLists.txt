@@ -5,9 +5,13 @@ project(iarc7_sensors)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
   iarc7_msgs
   roscpp
-  message_generation
+  tf
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -65,10 +69,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  iarc7_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   iarc7_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -100,7 +104,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES iarc7_sensors
 #  CATKIN_DEPENDS iarc7_msgs
 #  DEPENDS system_lib
@@ -114,8 +118,11 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  include ${catkin_INCLUDE_DIRS}
 )
+
+add_library(iarc7_sensors_altimeter_filter src/AltimeterFilter.cpp)
+add_dependencies(iarc7_sensors_altimeter_filter ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ library
 # add_library(iarc7_sensors
@@ -128,14 +135,15 @@ include_directories(
 # add_dependencies(iarc7_sensors ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(iarc7_sensors_altimeter src/altimeter.cpp src/lidarlite.cpp)
+add_executable(iarc7_sensors_altimeter_node src/altimeter.cpp src/lidarlite.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(iarc7_sensors_altimeter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(iarc7_sensors_altimeter_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(iarc7_sensors_altimeter
+target_link_libraries(iarc7_sensors_altimeter_node
+  iarc7_sensors_altimeter_filter
   ${catkin_LIBRARIES}
 )
 
