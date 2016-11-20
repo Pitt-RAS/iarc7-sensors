@@ -5,7 +5,7 @@
  * frame of an altimeter, transforms them into altitudes, and runs a smoothing
  * filter over the data.
  */
-#include "iarc7_sensors/AltimeterFilter.h"
+#include "iarc7_sensors/AltimeterFilter.hpp"
 
 #include <geometry_msgs/PointStamped.h>
 #include <ros/ros.h>
