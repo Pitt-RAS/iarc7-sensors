@@ -37,7 +37,7 @@ void AltimeterFilter::updateFilter(double altitude, double velocity, ros::Time t
 
     geometry_msgs::PointStamped level_frame_msg;
     try {
-        tf_buffer_.transform(altimeter_frame_msg, level_frame_msg, level_quad_frame_);
+        tf_buffer_.transform(altimeter_frame_msg, level_frame_msg, level_quad_frame_, ros::Duration(0.5));
     } catch (const std::exception& ex) {
         ROS_ERROR("Exception looking up transform in AltimeterFilter: %s", ex.what());
         return;
