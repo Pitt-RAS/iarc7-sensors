@@ -11,8 +11,7 @@
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
 
-#include <deque>
-#include <utility>
+#include "iarc7_sensors/MovingAverage.hpp"
 
 namespace iarc7_sensors {
 
@@ -27,14 +26,6 @@ class AltimeterFilter {
     double getFilteredAltitude(ros::Time time) const;
 
   private:
-    struct AltimeterFilterDataPoint {
-        double altitude;
-        ros::Time stamp;
-
-        AltimeterFilterDataPoint(double altitude, const ros::Time& stamp)
-            : altitude(altitude), stamp(stamp) {}
-    };
-
     ros::NodeHandle node_handle_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
@@ -42,9 +33,7 @@ class AltimeterFilter {
     std::string altimeter_frame_;
     std::string level_quad_frame_;
 
-    ros::Duration filter_time_constant_;
-
-    std::deque<AltimeterFilterDataPoint> altitude_buffer_;
+    iarc7_sensors::MovingAverage filter_;
 };
 
 } // namespace iarc7_sensors

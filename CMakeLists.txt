@@ -123,6 +123,10 @@ include_directories(
 
 add_library(iarc7_sensors_altimeter_filter src/AltimeterFilter.cpp)
 add_dependencies(iarc7_sensors_altimeter_filter ${catkin_EXPORTED_TARGETS})
+target_link_libraries(iarc7_sensors_altimeter_filter iarc7_sensors_moving_average)
+
+add_library(iarc7_sensors_moving_average src/MovingAverage.cpp)
+add_dependencies(iarc7_sensors_moving_average ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ library
 # add_library(iarc7_sensors
