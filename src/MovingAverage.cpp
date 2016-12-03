@@ -94,6 +94,9 @@ double MovingAverage::getFilteredValue(const ros::Time& time) const {
     // handle middle items
     i++;
     for (; i < value_buffer_.size() - 1; i++) {
+        // Each data point counts for half of the interval to its left and half
+        //   of the one to its right, so we take the entire interval from the
+        //   point on the left to the point on the right and divide by 2.
         ros::Duration duration = value_buffer_[i+1].stamp
             - value_buffer_[i-1].stamp;
         output_sum += value_buffer_[i].value * duration.toSec() / 2;
