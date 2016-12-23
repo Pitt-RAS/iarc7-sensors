@@ -43,7 +43,9 @@ void AltimeterFilter::updateFilter(double altitude, double velocity, ros::Time t
         return;
     }
 
-    filter_.updateFilter(-level_frame_msg.point.z, 0, time);
+    double transformed_velocity = velocity * level_frame_msg.point.z / altitude;
+
+    filter_.updateFilter(-level_frame_msg.point.z, transformed_velocity, time);
 }
 
 double AltimeterFilter::getFilteredAltitude(ros::Time time) const {

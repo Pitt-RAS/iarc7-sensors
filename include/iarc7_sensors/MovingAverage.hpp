@@ -21,10 +21,13 @@ class MovingAverage {
   private:
     struct MovingAverageDataPoint {
         double value;
+        double derivative;
         ros::Time stamp;
 
-        MovingAverageDataPoint(double value, const ros::Time& stamp)
-            : value(value), stamp(stamp) {}
+        MovingAverageDataPoint(double value,
+                               double derivative,
+                               const ros::Time& stamp)
+            : value(value), derivative(derivative), stamp(stamp) {}
     };
 
     const ros::Duration filter_time_constant_;
