@@ -15,7 +15,7 @@ void MovingAverage::updateFilter(double value, double derivative, const ros::Tim
         return;
     }
 
-    value_buffer_.emplace_back(value, time);
+    value_buffer_.emplace_back(value, derivative, time);
 
     while (value_buffer_.size() > 1) {
         ros::Duration time_since_second_reading =
