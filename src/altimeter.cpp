@@ -28,6 +28,10 @@ int main(int argc, char **argv) {
     
     bool err;
     do {
+        if(!ros::ok())
+        {
+            return 0;
+        }
         ros::spinOnce();
         err = lidarLite.openLidarLite();
         if (err == false) {
@@ -66,6 +70,10 @@ int main(int argc, char **argv) {
         }
         else {
             do {
+                if(!ros::ok())
+                {
+                    return 0;
+                }
                 ros::spinOnce();
                 ROS_ERROR("Lost connection with LidarLite v2, trying to connect");
                 lidarLite.closeLidarLite();
@@ -75,4 +83,6 @@ int main(int argc, char **argv) {
         }
         
     }
+
+    return 0;
 }
