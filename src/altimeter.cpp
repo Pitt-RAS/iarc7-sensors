@@ -38,11 +38,18 @@ int main(int argc, char **argv) {
     
     while(ros::ok() && lidarLite.error >= 0){
         ros::spinOnce();
-        double altitude = (lidarLite.getDistance()) / 100.0;
-        double velocity = (lidarLite.getVelocity()) / 100.0;
+
+        int altitude_int;
+        bool success = (lidarLite.getDistance(altitude_int) >= 0);
+        double altitude = altitude_int / 100.0;
+
+        int velocity_int;
+        success = success && (lidarLite.getVelocity(velocity_int) >= 0);
+        double velocity = velocity_int / 100.0;
+
         // altitude_msg.data = altitude;
         
-        if (altitude >= 0) {
+        if (success) {
             iarc7_msgs::Float64Stamped altitude_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
             ros::Time tempTime = ros::Time::now();

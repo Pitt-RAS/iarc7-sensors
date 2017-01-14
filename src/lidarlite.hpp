@@ -75,9 +75,9 @@ public:
     void closeLidarLite();                   // Close the I2C bus to the Lidar-Lite
     int writeLidarLite(int writeRegister,int writeValue) ;
     int readLidarLite(int readRegister) ;
-    int getDistance() ;
-    int getPreviousDistance() ;
-    int getVelocity() ;
+    int getDistance(int& distance) ;
+    int getPreviousDistance(int& distance) ;
+    int getVelocity(int& velocity) ;
     int getHardwareVersion() ;
     int getSoftwareVersion() ;
     int getError() ;
