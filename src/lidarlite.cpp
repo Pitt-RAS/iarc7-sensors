@@ -74,8 +74,9 @@ int LidarLite::writeLidarLite(int writeRegister, int writeValue)
 
 }
 
-// Return the current calculated distance in centimeters
-int LidarLite::getDistance()
+// Store the current calculated distance in centimeters, return 0 on success,
+// negative on failure
+int LidarLite::getDistance(int& distance)
 {
     int ioResult ;
     int msb, lsb ;
@@ -96,13 +97,13 @@ int LidarLite::getDistance()
         lsb = ioResult ;
     }
 
-    int distance = (msb << 8) + lsb ;
-
-    return distance ;
+    distance = (msb << 8) + lsb ;
+    return 0 ;
 }
 
-// Return the previous measurement in centimeters
-int LidarLite::getPreviousDistance() {
+// Store the previous measurement in centimeters, return 0 on success, negative
+// on failure
+int LidarLite::getPreviousDistance(int& distance) {
 
     int ioResult ;
     int msb, lsb ;
@@ -119,25 +120,31 @@ int LidarLite::getPreviousDistance() {
         lsb = ioResult ;
     }
 
-    int distance = (msb << 8) + lsb ;
-
-    return distance ;
+    distance = (msb << 8) + lsb ;
+    return 0 ;
 }
 
 // Return the velocity (rate of change) in centimeters; +/-
 // Velocity is returned from the Lidar-Lite as an 8-bit 2's complement number
-// The returned value is converted to a signed integer
-int LidarLite::getVelocity()
+// The value is converted to a signed integer, returns negative on failure
+int LidarLite::getVelocity(int& velocity)
 {
     int ioResult = readLidarLite(kLidarLiteVelocityMeasurementOutput);
-    if (ioResult == 255) {
+
+    if (ioResult < 0) {
+        return ioResult ;
+    } else if (ioResult > 255) {
+        return -1 ;
+    } else if (ioResult == 255) {
+        velocity = 0 ;
+        return 0 ;
+    } else if (ioResult > 127) {
+        velocity = ioResult - 256 ;
+        return 0 ;
+    } else {
+        velocity = ioResult ;
         return 0 ;
     }
-    if (ioResult > 127) {
-
-        return  ioResult - 256 ;
-    }
-    return ioResult ;
 }
 
 // Return the Lidar-Lite hardware version
