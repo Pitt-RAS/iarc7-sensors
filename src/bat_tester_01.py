@@ -1,35 +1,46 @@
-#!/usr/bin/env python
-#Things to do:
-#open file and read its values from it, (voltage0 gives out 12344 =12.344 and current0=66=>.066
-#file location:
-#/sys/devices/platform/7000c400.i2c/i2c-1/1-0042/iio_device/(in_voltage0_input, in_current0_input)
+#!/usr/bin/env python2
 
 import rospy
-#from sensor_msgs.msg import BatteryState
+from sensor_msgs.msg import BatteryState
 
-try:
-	volt0_in=open("/sys/devices/platform/7000c400.i2c/i2c-1/1-0042/iio_device/in_voltage0_input",'r')
-	curr0_in=open("/sys/devices/platform/7000c400.i2c/i2c-1/1-0042/iio_device/in_current0_input",'r')
+def batRead():
+    bat_dir = "/sys/devices/platform/7000c400.i2c/i2c-1/1-0042/iio_device/"
+    volt0_in = open(bat_dir + "in_voltage0_input")
+    curr0_in = open(bat_dir + "in_current0_input")
 
-	from std_msgs.msg import String
+    rospy.init_node('BatRead')
+    pub = rospy.Publisher('jetson_battery', BatteryState, queue_size=20)
 
-	def batRead():
-	    pub = rospy.Publisher('BatRead', String, queue_size=20)
-	    rospy.init_node('BatRead', anonymous=True)
-	    rate = rospy.Rate(5) # 5hz
-	    while not rospy.is_shutdown():
-		bat_str = "VOLTAGE " + volt0_in.read().strip() + " " + "CURRENT "+ curr0_in.read().strip()
-		volt0_in.seek(0)
-		curr0_in.seek(0)
-		rospy.loginfo(bat_str)
-		pub.publish(bat_str)
-		rate.sleep()
+    rate = rospy.Rate(5) # 5hz
+    while not rospy.is_shutdown():
+        try:
+            # Read voltage in mV, store in V
+            voltage = float(volt0_in.read().strip()) / 1000
+            volt0_in.seek(0)
 
-	if __name__ == '__main__':
-	    try:
-		batRead()
-	    except rospy.ROSInterruptException:
-		pass
+            # Read voltage in mA, store in A
+            current = float(curr0_in.read().strip()) / 1000
+            curr0_in.seek(0)
+        except (IOError, ValueError) as e:
+            rospy.logerr("I/O error: {0}".format(e))
+        else:
+            bat_msg = BatteryState()
+            bat_msg.header.stamp = rospy.Time.now()
+            bat_msg.voltage = voltage
+            bat_msg.current = -current
+            bat_msg.charge = float('NaN')
+            bat_msg.capacity = float('NaN')
+            bat_msg.design_capacity = float('NaN')
+            bat_msg.percentage = float('NaN')
+            bat_msg.power_supply_status = bat_msg.POWER_SUPPLY_STATUS_UNKNOWN
+            bat_msg.power_supply_health = bat_msg.POWER_SUPPLY_HEALTH_UNKNOWN
+            bat_msg.power_supply_technology = bat_msg.POWER_SUPPLY_TECHNOLOGY_UNKNOWN
+            bat_msg.present = True
 
-except IOError as e:
-    print "I/O error({0}): {1}".format(e.errno, e.strerror)
+            rospy.logdebug('New battery message: %s'%bat_msg)
+            pub.publish(bat_msg)
+
+        rate.sleep()
+
+if __name__ == '__main__':
+    batRead()
