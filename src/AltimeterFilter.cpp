@@ -26,20 +26,30 @@ AltimeterFilter::AltimeterFilter(const ros::NodeHandle& node_handle,
                                  const std::string& level_quad_frame)
       : node_handle_(node_handle), tf_listener_(tf_buffer_),
         altimeter_frame_(altimeter_frame), level_quad_frame_(level_quad_frame),
-        filter_(ros::Duration(getParam(node_handle_, "filter_time_constant", 0.0))) {
+        filter_(ros::Duration(getParam(node_handle_,
+                                       "filter_time_constant",
+                                       0.0))) {
 }
 
-void AltimeterFilter::updateFilter(double altitude, double velocity, ros::Time time) {
+void AltimeterFilter::updateFilter(double altitude,
+                                   double velocity,
+                                   ros::Time time) {
+
     geometry_msgs::PointStamped altimeter_frame_msg;
     altimeter_frame_msg.header.stamp = time;
     altimeter_frame_msg.header.frame_id = altimeter_frame_;
     altimeter_frame_msg.point.z = altitude;
 
     geometry_msgs::PointStamped level_frame_msg;
+
     try {
-        tf_buffer_.transform(altimeter_frame_msg, level_frame_msg, level_quad_frame_, ros::Duration(0.5));
+        tf_buffer_.transform(altimeter_frame_msg,
+                             level_frame_msg,
+                             level_quad_frame_,
+                             ros::Duration(0.5));
     } catch (const std::exception& ex) {
-        ROS_ERROR("Exception looking up transform in AltimeterFilter: %s", ex.what());
+        ROS_ERROR("Exception looking up transform in AltimeterFilter: %s",
+                  ex.what());
         return;
     }
 
