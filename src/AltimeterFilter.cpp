@@ -38,7 +38,7 @@ void AltimeterFilter::updateFilter(double altitude,
     geometry_msgs::PointStamped altimeter_frame_msg;
     altimeter_frame_msg.header.stamp = time;
     altimeter_frame_msg.header.frame_id = altimeter_frame_;
-    altimeter_frame_msg.point.z = altitude;
+    altimeter_frame_msg.point.x = altitude;
 
     geometry_msgs::PointStamped level_frame_msg;
 
@@ -53,7 +53,7 @@ void AltimeterFilter::updateFilter(double altitude,
         return;
     }
 
-    double transformed_velocity = velocity * level_frame_msg.point.z / altitude;
+    double transformed_velocity = velocity * (-level_frame_msg.point.z) / altitude;
 
     filter_.updateFilter(-level_frame_msg.point.z, transformed_velocity, time);
 }

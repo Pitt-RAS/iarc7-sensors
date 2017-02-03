@@ -4,6 +4,7 @@
 #include "iarc7_sensors/AltimeterFilter.hpp"
 #include "lidarlite.hpp"
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include "iarc7_msgs/Float64Stamped.h"
 
 // Attempts to connect to the lidarlite until successful
@@ -27,10 +28,18 @@ int main(int argc, char **argv) {
 
     // Fetch parameters from ROS
     std::string altitude_frame;
-    n.param("output_frame", altitude_frame, std::string("altimeter_frame"));
+    n.param("output_frame", altitude_frame, std::string("lidarlite"));
 
-    ros::Publisher altitude_pub = n.advertise<iarc7_msgs::Float64Stamped>("altitude", 0);
-    ros::Publisher velocity_pub = n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
+    double altitude_covariance;
+    n.param("altitude_covariance", altitude_covariance, 0.05);
+
+    // Create publishers
+    ros::Publisher altitude_pub =
+        n.advertise<iarc7_msgs::Float64Stamped>("altimeter_reading", 0);
+    ros::Publisher velocity_pub =
+        n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
+    ros::Publisher altitude_pose_pub =
+        n.advertise<geometry_msgs::PoseWithCovarianceStamped>("altimeter_pose", 0);
 
     LidarLite lidarLite;
     iarc7_sensors::AltimeterFilter filter(n, altitude_frame, "level_quad");
@@ -52,21 +61,38 @@ int main(int argc, char **argv) {
         double velocity = velocity_int / 100.0;
 
         if (success) {
-            iarc7_msgs::Float64Stamped altitude_msg;
+            // Create messages to publish
+            iarc7_msgs::Float64Stamped altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
+            geometry_msgs::PoseWithCovarianceStamped altimeter_pose_msg;
 
             // Update filter and lookup transforms
             ros::Time tempTime = ros::Time::now();
-//            filter.updateFilter(altitude, velocity, tempTime);
-            altitude_msg.header.frame_id = altitude_frame;
-            altitude_msg.header.stamp = tempTime;
+            filter.updateFilter(altitude, velocity, tempTime);
+
+            // Publish raw altimeter reading
+            altimeter_reading_msg.header.frame_id = altitude_frame;
+            altimeter_reading_msg.header.stamp = tempTime;
+            altimeter_reading_msg.data = altitude;
+            altitude_pub.publish(altimeter_reading_msg);
+
+            // Publish raw velocity reading
             velocity_msg.header.frame_id = altitude_frame;
             velocity_msg.header.stamp = tempTime;
-//            altitude = filter.getFilteredAltitude(tempTime);
-            altitude_msg.data = altitude; 
             velocity_msg.data = velocity;
-            altitude_pub.publish(altitude_msg);
-            velocity_pub.publish(velocity_msg);	
+            velocity_pub.publish(velocity_msg);
+
+            // Publish pose estimate
+            altimeter_pose_msg.header.frame_id = "map";
+            altimeter_pose_msg.header.stamp = tempTime;
+            altimeter_pose_msg.pose.pose.position.z =
+                filter.getFilteredAltitude(tempTime);
+
+            // This is a 6x6 matrix and z height is variable 2,
+            // so the z height covariance is at location (2,2)
+            altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance;
+            altitude_pose_pub.publish(altimeter_pose_msg);
+
         } else {
             ROS_ERROR("Lidar-Lite communication failed");
             connect(lidarLite);
