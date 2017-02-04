@@ -91,8 +91,15 @@ int main(int argc, char **argv) {
             // This is a 6x6 matrix and z height is variable 2,
             // so the z height covariance is at location (2,2)
             altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance;
-            altitude_pose_pub.publish(altimeter_pose_msg);
 
+            // Check if the filter spit out a valid estimate
+            if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {
+                ROS_ERROR("Altimeter filter returned invalid altitude %f",
+                          altimeter_pose_msg.pose.pose.position.z);
+            } else {
+                // Publish the transform
+                altitude_pose_pub.publish(altimeter_pose_msg);
+            }
         } else {
             ROS_ERROR("Lidar-Lite communication failed");
             connect(lidarLite);
