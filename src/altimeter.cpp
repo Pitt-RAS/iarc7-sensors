@@ -10,7 +10,7 @@
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
     bool err;
-    ros::Rate rate (100);
+    ros::Rate rate (10);
     do {
         err = lidarLite.openLidarLite();
         if (err == false) {
