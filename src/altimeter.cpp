@@ -10,15 +10,28 @@
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
     bool err;
-    ros::Rate rate (10);
-    do {
-        err = lidarLite.openLidarLite();
-        if (err == false) {
-            ROS_ERROR("Unable to connect to LidarLite v2, trying to connect");
-        }
-        ros::spinOnce();
-        rate.sleep();
-    } while (err == false && ros::ok());
+    ros::Rate rate (100);
+
+    err = lidarLite.openLidarLite();
+    if (err == false) {
+        ROS_ERROR("Unable to connect to LidarLite v2, attempting connection again");
+        do {
+            ros::spinOnce();
+            rate.sleep();
+
+            err = lidarLite.openLidarLite();
+            if (err == false) {
+                ROS_DEBUG("Connection still not established with the lidarlite");
+            }
+        } while (err == false && ros::ok());
+    }
+}
+
+void reconnect(LidarLite& lidarLite)
+{
+    ROS_ERROR("Reconnection to lidarlite requested");
+    connect(lidarLite);
+    ROS_ERROR("Successfully reestablished connection with LidarLite v2");
 }
 
 int main(int argc, char **argv) {
@@ -102,8 +115,7 @@ int main(int argc, char **argv) {
             }
         } else {
             ROS_ERROR("Lidar-Lite communication failed");
-            connect(lidarLite);
-            ROS_ERROR("Successfully reestablished connection with LidarLite v2");
+            reconnect(lidarLite);
         }
 
     }
