@@ -1,3 +1,4 @@
+#include <cmath>
 #include <ros/ros.h>
 #include <string.h>
 
@@ -38,13 +39,14 @@ int main(int argc, char **argv) {
 
     ros::init(argc, argv, "altimeter");
     ros::NodeHandle n;
+    ros::NodeHandle private_nh("~");
 
     // Fetch parameters from ROS
     std::string altitude_frame;
-    n.param("output_frame", altitude_frame, std::string("lidarlite"));
+    private_nh.param("output_frame", altitude_frame, std::string("lidarlite"));
 
     double altitude_covariance;
-    n.param("altitude_covariance", altitude_covariance, 0.05);
+    private_nh.param("altitude_covariance", altitude_covariance, 0.05);
 
     // Create publishers
     ros::Publisher altitude_pub =
@@ -55,7 +57,7 @@ int main(int argc, char **argv) {
         n.advertise<geometry_msgs::PoseWithCovarianceStamped>("altimeter_pose", 0);
 
     LidarLite lidarLite;
-    iarc7_sensors::AltimeterFilter filter(n, altitude_frame, "level_quad");
+    iarc7_sensors::AltimeterFilter filter(private_nh, altitude_frame, "level_quad");
 
     // Connect to the lidarlite
     connect(lidarLite);
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
 
             // This is a 6x6 matrix and z height is variable 2,
             // so the z height covariance is at location (2,2)
-            altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance;
+            altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance * (1 + 8*std::exp(-4*altimeter_pose_msg.pose.pose.position.z));
 
             // Check if the filter spit out a valid estimate
             if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {
