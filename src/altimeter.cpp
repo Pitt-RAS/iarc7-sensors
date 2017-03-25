@@ -53,11 +53,12 @@ int main(int argc, char **argv) {
         n.advertise<iarc7_msgs::Float64Stamped>("altimeter_reading", 0);
     ros::Publisher velocity_pub =
         n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
-    ros::Publisher altitude_pose_pub =
-        n.advertise<geometry_msgs::PoseWithCovarianceStamped>("altimeter_pose", 0);
 
     LidarLite lidarLite;
-    iarc7_sensors::AltimeterFilter filter(private_nh, altitude_frame, "level_quad");
+    iarc7_sensors::AltimeterFilter filter(private_nh,
+                                          altitude_frame,
+                                          altitude_covariance,
+                                          "level_quad");
 
     // Connect to the lidarlite
     connect(lidarLite);
@@ -79,11 +80,9 @@ int main(int argc, char **argv) {
             // Create messages to publish
             iarc7_msgs::Float64Stamped altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
-            geometry_msgs::PoseWithCovarianceStamped altimeter_pose_msg;
 
             // Update filter and lookup transforms
             ros::Time tempTime = ros::Time::now();
-            filter.updateFilter(altitude, velocity, tempTime);
 
             // Publish raw altimeter reading
             altimeter_reading_msg.header.frame_id = altitude_frame;
@@ -96,30 +95,10 @@ int main(int argc, char **argv) {
             velocity_msg.header.stamp = tempTime;
             velocity_msg.data = velocity;
             velocity_pub.publish(velocity_msg);
-
-            // Publish pose estimate
-            altimeter_pose_msg.header.frame_id = "map";
-            altimeter_pose_msg.header.stamp = tempTime;
-            altimeter_pose_msg.pose.pose.position.z =
-                filter.getFilteredAltitude(tempTime);
-
-            // This is a 6x6 matrix and z height is variable 2,
-            // so the z height covariance is at location (2,2)
-            altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance * (1 + 8*std::exp(-4*altimeter_pose_msg.pose.pose.position.z));
-
-            // Check if the filter spit out a valid estimate
-            if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {
-                ROS_ERROR("Altimeter filter returned invalid altitude %f",
-                          altimeter_pose_msg.pose.pose.position.z);
-            } else {
-                // Publish the transform
-                altitude_pose_pub.publish(altimeter_pose_msg);
-            }
         } else {
             ROS_ERROR("Lidar-Lite communication failed");
             reconnect(lidarLite);
         }
-
     }
 
     return 0;
