@@ -27,7 +27,8 @@ namespace iarc7_sensors {
 
 class AltimeterFilter {
   public:
-    AltimeterFilter(ros::NodeHandle& node_handle,
+    AltimeterFilter(ros::NodeHandle& nh,
+                    const ros::NodeHandle& private_nh,
                     const std::string& altimeter_frame,
                     double altitude_covariance,
                     const std::string& level_quad_frame);

@@ -55,7 +55,8 @@ int main(int argc, char **argv) {
         n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
 
     LidarLite lidarLite;
-    iarc7_sensors::AltimeterFilter filter(private_nh,
+    iarc7_sensors::AltimeterFilter filter(n,
+                                          private_nh,
                                           altitude_frame,
                                           altitude_covariance,
                                           "level_quad");

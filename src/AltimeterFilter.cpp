@@ -21,7 +21,8 @@ T getParam(const ros::NodeHandle& nh, const std::string& name, const T& def) {
 
 namespace iarc7_sensors {
 
-AltimeterFilter::AltimeterFilter(ros::NodeHandle& node_handle,
+AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
+                                 const ros::NodeHandle& private_nh,
                                  const std::string& altimeter_frame,
                                  double altitude_covariance,
                                  const std::string& level_quad_frame)
@@ -29,13 +30,13 @@ AltimeterFilter::AltimeterFilter(ros::NodeHandle& node_handle,
         altitude_covariance_(altitude_covariance),
         level_quad_frame_(level_quad_frame),
         altitude_pose_pub_(
-            node_handle.advertise<geometry_msgs::PoseWithCovarianceStamped>(
+            nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(
                 "altimeter_pose", 0)),
         tf_buffer_(),
         tf_listener_(tf_buffer_),
-        msg_sub_(node_handle, "altimeter_reading", 100),
+        msg_sub_(nh, "altimeter_reading", 100),
         msg_filter_(msg_sub_, tf_buffer_, level_quad_frame, 100, nullptr),
-        filter_(ros::Duration(getParam(node_handle,
+        filter_(ros::Duration(getParam(private_nh,
                                        "filter_time_constant",
                                        0.0)))
 {
