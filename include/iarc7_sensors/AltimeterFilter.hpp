@@ -35,7 +35,6 @@ class AltimeterFilter {
     ~AltimeterFilter() = default;
 
     void updateFilter(const iarc7_msgs::Float64Stamped& msg);
-    double getFilteredAltitude(ros::Time time) const;
 
   private:
     const std::string altimeter_frame_;
@@ -49,8 +48,6 @@ class AltimeterFilter {
 
     message_filters::Subscriber<iarc7_msgs::Float64Stamped> msg_sub_;
     tf2_ros::MessageFilter<iarc7_msgs::Float64Stamped> msg_filter_;
-
-    iarc7_sensors::MovingAverage filter_;
 };
 
 } // namespace iarc7_sensors

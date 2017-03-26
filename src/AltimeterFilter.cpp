@@ -35,10 +35,7 @@ AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
         tf_buffer_(),
         tf_listener_(tf_buffer_),
         msg_sub_(nh, "altimeter_reading", 100),
-        msg_filter_(msg_sub_, tf_buffer_, level_quad_frame, 100, nullptr),
-        filter_(ros::Duration(getParam(private_nh,
-                                       "filter_time_constant",
-                                       0.0)))
+        msg_filter_(msg_sub_, tf_buffer_, level_quad_frame, 100, nullptr)
 {
     msg_filter_.registerCallback(&AltimeterFilter::updateFilter, this);
 }
@@ -62,13 +59,11 @@ void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
         return;
     }
 
-    filter_.updateFilter(-level_frame_msg.point.z, 0.0, time);
-
     // Publish pose estimate
     geometry_msgs::PoseWithCovarianceStamped altimeter_pose_msg;
     altimeter_pose_msg.header.frame_id = "map";
     altimeter_pose_msg.header.stamp = time;
-    altimeter_pose_msg.pose.pose.position.z = getFilteredAltitude(time);
+    altimeter_pose_msg.pose.pose.position.z = -level_frame_msg.point.z;
 
     // This is a 6x6 matrix and z height is variable 2,
     // so the z height covariance is at location (2,2)
@@ -82,11 +77,6 @@ void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
         // Publish the transform
         altitude_pose_pub_.publish(altimeter_pose_msg);
     }
-}
-
-double AltimeterFilter::getFilteredAltitude(ros::Time time) const
-{
-    return filter_.getFilteredValue(time);
 }
 
 } // namespace iarc7_sensors
