@@ -56,7 +56,6 @@ int main(int argc, char **argv) {
 
     LidarLite lidarLite;
     iarc7_sensors::AltimeterFilter filter(n,
-                                          private_nh,
                                           altitude_frame,
                                           altitude_covariance,
                                           "level_quad");

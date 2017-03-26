@@ -22,7 +22,6 @@ T getParam(const ros::NodeHandle& nh, const std::string& name, const T& def) {
 namespace iarc7_sensors {
 
 AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
-                                 const ros::NodeHandle& private_nh,
                                  const std::string& altimeter_frame,
                                  double altitude_covariance,
                                  const std::string& level_quad_frame)
