@@ -66,7 +66,7 @@ void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
 
     // This is a 6x6 matrix and z height is variable 2,
     // so the z height covariance is at location (2,2)
-    altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance_ * (1 + 8*std::exp(-4*altimeter_pose_msg.pose.pose.position.z));
+    altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance_ * (1 + 60*std::exp(-250*std::pow(altimeter_pose_msg.pose.pose.position.z, 4)));
 
     // Check if the filter spit out a valid estimate
     if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {
