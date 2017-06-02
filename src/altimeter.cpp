@@ -44,10 +44,10 @@ int main(int argc, char **argv) {
 
     // Fetch parameters from ROS
     std::string altitude_frame;
-    private_nh.param("output_frame", altitude_frame);
+    private_nh.param("output_frame", altitude_frame, std::string(""));
 
     double altitude_variance;
-    private_nh.param("altitude_variance", altitude_variance);
+    private_nh.param("altitude_variance", altitude_variance, 0.0);
 
     // Create publishers
     ros::Publisher altitude_pub =
