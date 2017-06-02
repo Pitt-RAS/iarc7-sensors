@@ -27,9 +27,11 @@ namespace iarc7_sensors {
 
 class AltimeterFilter {
   public:
+    /// @param[in] altitude_variance_func  {Should return the variance for a given
+    ///                                     altitude measurement}
     AltimeterFilter(ros::NodeHandle& nh,
                     const std::string& altimeter_frame,
-                    double altitude_covariance,
+                    std::function<double(double)> altitude_variance_func,
                     const std::string& level_quad_frame);
     ~AltimeterFilter() = default;
 
@@ -37,7 +39,7 @@ class AltimeterFilter {
 
   private:
     const std::string altimeter_frame_;
-    const double altitude_covariance_;
+    const std::function<double(double)> altitude_variance_func_;
     const std::string level_quad_frame_;
 
     const ros::Publisher altitude_pose_pub_;

@@ -16,10 +16,10 @@ namespace iarc7_sensors {
 
 AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
                                  const std::string& altimeter_frame,
-                                 double altitude_covariance,
+                                 std::function<double(double)> altitude_variance_func,
                                  const std::string& level_quad_frame)
       : altimeter_frame_(altimeter_frame),
-        altitude_covariance_(altitude_covariance),
+        altitude_variance_func_(std::move(altitude_variance_func)),
         level_quad_frame_(level_quad_frame),
         altitude_pose_pub_(
             nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(
@@ -59,7 +59,8 @@ void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
 
     // This is a 6x6 matrix and z height is variable 2,
     // so the z height covariance is at location (2,2)
-    altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance_ * (1 + 60*std::exp(-250*std::pow(altimeter_pose_msg.pose.pose.position.z, 4)));
+    altimeter_pose_msg.pose.covariance[2*6 + 2] =
+        altitude_variance_func_(altimeter_pose_msg.pose.pose.position.z);
 
     // Check if the filter spit out a valid estimate
     if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {

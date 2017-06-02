@@ -55,10 +55,14 @@ int main(int argc, char **argv) {
         n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
 
     LidarLite lidarLite;
-    iarc7_sensors::AltimeterFilter filter(n,
-                                          altitude_frame,
-                                          altitude_covariance,
-                                          "level_quad");
+    iarc7_sensors::AltimeterFilter filter(
+            n,
+            altitude_frame,
+            [=](double altitude) -> double {
+                return altitude_covariance
+                     * (1 + 60*std::exp(-250*std::pow(altitude, 4)));
+            },
+            "level_quad");
 
     // Connect to the lidarlite
     connect(lidarLite);
