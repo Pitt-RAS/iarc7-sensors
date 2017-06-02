@@ -6,7 +6,8 @@
 #include "lidarlite.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include "iarc7_msgs/Float64Stamped.h"
+#include <iarc7_msgs/Float64Stamped.h>
+#include <sensor_msgs/Range.h>
 
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
@@ -43,22 +44,26 @@ int main(int argc, char **argv) {
 
     // Fetch parameters from ROS
     std::string altitude_frame;
-    private_nh.param("output_frame", altitude_frame, std::string("lidarlite"));
+    private_nh.param("output_frame", altitude_frame, std::string(""));
 
-    double altitude_covariance;
-    private_nh.param("altitude_covariance", altitude_covariance, 0.05);
+    double altitude_variance;
+    private_nh.param("altitude_variance", altitude_variance, 0.0);
 
     // Create publishers
     ros::Publisher altitude_pub =
-        n.advertise<iarc7_msgs::Float64Stamped>("altimeter_reading", 0);
+        n.advertise<sensor_msgs::Range>("altimeter_reading", 0);
     ros::Publisher velocity_pub =
         n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
 
     LidarLite lidarLite;
-    iarc7_sensors::AltimeterFilter filter(n,
-                                          altitude_frame,
-                                          altitude_covariance,
-                                          "level_quad");
+    iarc7_sensors::AltimeterFilter filter(
+            n,
+            altitude_frame,
+            [=](double altitude) -> double {
+                return altitude_variance
+                     * (1 + 60*std::exp(-250*std::pow(altitude, 4)));
+            },
+            "level_quad");
 
     // Connect to the lidarlite
     connect(lidarLite);
@@ -78,7 +83,7 @@ int main(int argc, char **argv) {
 
         if (success) {
             // Create messages to publish
-            iarc7_msgs::Float64Stamped altimeter_reading_msg;
+            sensor_msgs::Range altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
 
             // Update filter and lookup transforms
@@ -87,7 +92,10 @@ int main(int argc, char **argv) {
             // Publish raw altimeter reading
             altimeter_reading_msg.header.frame_id = altitude_frame;
             altimeter_reading_msg.header.stamp = tempTime;
-            altimeter_reading_msg.data = altitude;
+            altimeter_reading_msg.radiation_type = sensor_msgs::Range::INFRARED;
+            altimeter_reading_msg.min_range = 0;
+            altimeter_reading_msg.max_range = 100;
+            altimeter_reading_msg.range = altitude;
             altitude_pub.publish(altimeter_reading_msg);
 
             // Publish raw velocity reading

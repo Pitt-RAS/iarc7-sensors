@@ -12,21 +12,14 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
-template<typename T>
-T getParam(const ros::NodeHandle& nh, const std::string& name, const T& def) {
-    T val;
-    nh.param(name, val, def);
-    return val;
-}
-
 namespace iarc7_sensors {
 
 AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
                                  const std::string& altimeter_frame,
-                                 double altitude_covariance,
+                                 std::function<double(double)> altitude_variance_func,
                                  const std::string& level_quad_frame)
       : altimeter_frame_(altimeter_frame),
-        altitude_covariance_(altitude_covariance),
+        altitude_variance_func_(std::move(altitude_variance_func)),
         level_quad_frame_(level_quad_frame),
         altitude_pose_pub_(
             nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(
@@ -39,14 +32,21 @@ AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
     msg_filter_.registerCallback(&AltimeterFilter::updateFilter, this);
 }
 
-void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
+void AltimeterFilter::updateFilter(const sensor_msgs::Range& msg)
 {
+    if (!std::isfinite(msg.range)
+     || msg.range < msg.min_range
+     || msg.range > msg.max_range) {
+        ROS_WARN("AltimeterFilter skipped out-of-range reading (%f)", msg.range);
+        return;
+    }
+
     ros::Time time = msg.header.stamp;
 
     geometry_msgs::PointStamped altimeter_frame_msg;
     altimeter_frame_msg.header.stamp = time;
     altimeter_frame_msg.header.frame_id = altimeter_frame_;
-    altimeter_frame_msg.point.x = msg.data;
+    altimeter_frame_msg.point.x = msg.range;
 
     geometry_msgs::PointStamped level_frame_msg;
 
@@ -66,7 +66,8 @@ void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
 
     // This is a 6x6 matrix and z height is variable 2,
     // so the z height covariance is at location (2,2)
-    altimeter_pose_msg.pose.covariance[2*6 + 2] = altitude_covariance_ * (1 + 60*std::exp(-250*std::pow(altimeter_pose_msg.pose.pose.position.z, 4)));
+    altimeter_pose_msg.pose.covariance[2*6 + 2] =
+        altitude_variance_func_(altimeter_pose_msg.pose.pose.position.z);
 
     // Check if the filter spit out a valid estimate
     if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {

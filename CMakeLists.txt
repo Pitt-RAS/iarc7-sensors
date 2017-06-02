@@ -141,15 +141,20 @@ add_dependencies(iarc7_sensors_moving_average ${catkin_EXPORTED_TARGETS})
 ## either from message generation or dynamic reconfigure
 # add_dependencies(iarc7_sensors ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-## Declare a C++ executable
 add_executable(iarc7_sensors_altimeter_node src/altimeter.cpp src/lidarlite.cpp)
-
-## Add cmake target dependencies of the executable
-## same as for the library above
 add_dependencies(iarc7_sensors_altimeter_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
 target_link_libraries(iarc7_sensors_altimeter_node
+  iarc7_sensors_altimeter_filter
+  ${catkin_LIBRARIES}
+)
+
+add_executable(iarc7_sensors_altimeter_from_subscription_node
+  src/altimeter_from_subscription.cpp
+)
+add_dependencies(iarc7_sensors_altimeter_from_subscription_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(iarc7_sensors_altimeter_from_subscription_node
   iarc7_sensors_altimeter_filter
   ${catkin_LIBRARIES}
 )

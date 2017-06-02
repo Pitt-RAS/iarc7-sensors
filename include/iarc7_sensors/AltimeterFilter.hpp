@@ -21,23 +21,25 @@
 #include "iarc7_sensors/MovingAverage.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <iarc7_msgs/Float64Stamped.h>
+#include <sensor_msgs/Range.h>
 
 namespace iarc7_sensors {
 
 class AltimeterFilter {
   public:
+    /// @param[in] altitude_variance_func  {Should return the variance for a given
+    ///                                     altitude measurement}
     AltimeterFilter(ros::NodeHandle& nh,
                     const std::string& altimeter_frame,
-                    double altitude_covariance,
+                    std::function<double(double)> altitude_variance_func,
                     const std::string& level_quad_frame);
     ~AltimeterFilter() = default;
 
-    void updateFilter(const iarc7_msgs::Float64Stamped& msg);
+    void updateFilter(const sensor_msgs::Range& msg);
 
   private:
     const std::string altimeter_frame_;
-    const double altitude_covariance_;
+    const std::function<double(double)> altitude_variance_func_;
     const std::string level_quad_frame_;
 
     const ros::Publisher altitude_pose_pub_;
@@ -45,8 +47,8 @@ class AltimeterFilter {
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
 
-    message_filters::Subscriber<iarc7_msgs::Float64Stamped> msg_sub_;
-    tf2_ros::MessageFilter<iarc7_msgs::Float64Stamped> msg_filter_;
+    message_filters::Subscriber<sensor_msgs::Range> msg_sub_;
+    tf2_ros::MessageFilter<sensor_msgs::Range> msg_filter_;
 };
 
 } // namespace iarc7_sensors
