@@ -6,7 +6,8 @@
 #include "lidarlite.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include "iarc7_msgs/Float64Stamped.h"
+#include <iarc7_msgs/Float64Stamped.h>
+#include <sensor_msgs/Range.h>
 
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
 
     // Create publishers
     ros::Publisher altitude_pub =
-        n.advertise<iarc7_msgs::Float64Stamped>("altimeter_reading", 0);
+        n.advertise<sensor_msgs::Range>("altimeter_reading", 0);
     ros::Publisher velocity_pub =
         n.advertise<iarc7_msgs::Float64Stamped>("velocity", 0);
 
@@ -82,7 +83,7 @@ int main(int argc, char **argv) {
 
         if (success) {
             // Create messages to publish
-            iarc7_msgs::Float64Stamped altimeter_reading_msg;
+            sensor_msgs::Range altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
 
             // Update filter and lookup transforms
@@ -91,7 +92,10 @@ int main(int argc, char **argv) {
             // Publish raw altimeter reading
             altimeter_reading_msg.header.frame_id = altitude_frame;
             altimeter_reading_msg.header.stamp = tempTime;
-            altimeter_reading_msg.data = altitude;
+            altimeter_reading_msg.radiation_type = sensor_msgs::Range::INFRARED;
+            altimeter_reading_msg.min_range = 0;
+            altimeter_reading_msg.max_range = 100;
+            altimeter_reading_msg.range = altitude;
             altitude_pub.publish(altimeter_reading_msg);
 
             // Publish raw velocity reading

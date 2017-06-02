@@ -21,7 +21,7 @@
 #include "iarc7_sensors/MovingAverage.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <iarc7_msgs/Float64Stamped.h>
+#include <sensor_msgs/Range.h>
 
 namespace iarc7_sensors {
 
@@ -35,7 +35,7 @@ class AltimeterFilter {
                     const std::string& level_quad_frame);
     ~AltimeterFilter() = default;
 
-    void updateFilter(const iarc7_msgs::Float64Stamped& msg);
+    void updateFilter(const sensor_msgs::Range& msg);
 
   private:
     const std::string altimeter_frame_;
@@ -47,8 +47,8 @@ class AltimeterFilter {
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
 
-    message_filters::Subscriber<iarc7_msgs::Float64Stamped> msg_sub_;
-    tf2_ros::MessageFilter<iarc7_msgs::Float64Stamped> msg_filter_;
+    message_filters::Subscriber<sensor_msgs::Range> msg_sub_;
+    tf2_ros::MessageFilter<sensor_msgs::Range> msg_filter_;
 };
 
 } // namespace iarc7_sensors

@@ -32,14 +32,21 @@ AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
     msg_filter_.registerCallback(&AltimeterFilter::updateFilter, this);
 }
 
-void AltimeterFilter::updateFilter(const iarc7_msgs::Float64Stamped& msg)
+void AltimeterFilter::updateFilter(const sensor_msgs::Range& msg)
 {
+    if (!std::isfinite(msg.range)
+     || msg.range < msg.min_range
+     || msg.range > msg.max_range) {
+        ROS_WARN("AltimeterFilter skipped out-of-range reading (%f)", msg.range);
+        return;
+    }
+
     ros::Time time = msg.header.stamp;
 
     geometry_msgs::PointStamped altimeter_frame_msg;
     altimeter_frame_msg.header.stamp = time;
     altimeter_frame_msg.header.frame_id = altimeter_frame_;
-    altimeter_frame_msg.point.x = msg.data;
+    altimeter_frame_msg.point.x = msg.range;
 
     geometry_msgs::PointStamped level_frame_msg;
 

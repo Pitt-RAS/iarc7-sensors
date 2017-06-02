@@ -9,5 +9,7 @@
         type="iarc7_sensors_altimeter_from_subscription_node">
         <rosparam command="load"
             file="$(find iarc7_sensors)/param/short_range_altimeter.yaml" />
+        <remap from="altimeter_reading" to="short_distance_lidar" />
+        <remap from="altimeter_pose" to="short_distance_lidar_pose" />
     </node>
 </launch>
