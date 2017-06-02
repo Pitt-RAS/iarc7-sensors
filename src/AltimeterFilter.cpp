@@ -12,13 +12,6 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
-template<typename T>
-T getParam(const ros::NodeHandle& nh, const std::string& name, const T& def) {
-    T val;
-    nh.param(name, val, def);
-    return val;
-}
-
 namespace iarc7_sensors {
 
 AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
