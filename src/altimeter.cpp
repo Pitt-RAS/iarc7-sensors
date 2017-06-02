@@ -43,10 +43,10 @@ int main(int argc, char **argv) {
 
     // Fetch parameters from ROS
     std::string altitude_frame;
-    private_nh.param("output_frame", altitude_frame, std::string("lidarlite"));
+    private_nh.param("output_frame", altitude_frame);
 
-    double altitude_covariance;
-    private_nh.param("altitude_covariance", altitude_covariance, 0.05);
+    double altitude_variance;
+    private_nh.param("altitude_variance", altitude_variance);
 
     // Create publishers
     ros::Publisher altitude_pub =
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
             n,
             altitude_frame,
             [=](double altitude) -> double {
-                return altitude_covariance
+                return altitude_variance
                      * (1 + 60*std::exp(-250*std::pow(altitude, 4)));
             },
             "level_quad");
