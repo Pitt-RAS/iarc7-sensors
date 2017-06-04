@@ -1,2 +1,2 @@
 output_frame: 'short_distance_lidar'
-altitude_variance: 0.001
+altitude_variance: 0.0001

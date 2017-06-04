@@ -1,2 +1,2 @@
 output_frame: 'lidarlite'
-altitude_variance: 0.50
+altitude_variance: 0.0009
