@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # Wait for a valid timestamp
     while rospy.Time.now() == rospy.Time(0):
         if rospy.is_shutdown():
-            sys.exit()  
+            raise rospy.exceptions.ROSInterruptException('No valid timestamp before shutdown')
 
     # Make sure a message is recieved and published before connecting
     # to safety
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         if last_msg_stamp is not None:
             break
         if rospy.is_shutdown():
-            sys.exit()
+            raise rospy.exceptions.ROSInterruptException('No message before timeout')
 
     safety_client = SafetyClient('absolute_switch velocity_publisher')
     assert(safety_client.form_bond())
@@ -47,6 +47,6 @@ if __name__ == '__main__':
            or safety_client.is_safety_active()):
             # We don't have a safety response for this node so just exit
             break
-        # Make sure we are within  10Hz of the 50Hz target update rate
-        if rospy.Time.now() - last_msg_stamp > rospy.Duration(1.0/(50.0-10.0)):
+        # Make sure we are within 20Hz of the 50Hz target update rate
+        if (rospy.Time.now() - last_msg_stamp) > rospy.Duration(1.0/(50.0-20.0)):
             rospy.logwarn('Absolute velocity from contact switches cant hit update rate')
