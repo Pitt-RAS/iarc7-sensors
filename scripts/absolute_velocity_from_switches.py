@@ -36,6 +36,8 @@ if __name__ == '__main__':
         assert((rospy.Time.now() - start_time) < rospy.Duration(10.0))
         if last_msg_stamp is not None:
             break
+        if rospy.is_shutdown():
+            sys.exit()
 
     safety_client = SafetyClient('absolute_switch velocity_publisher')
     assert(safety_client.form_bond())
