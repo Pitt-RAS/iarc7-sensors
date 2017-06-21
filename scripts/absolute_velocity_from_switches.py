@@ -39,7 +39,7 @@ if __name__ == '__main__':
         if rospy.is_shutdown():
             raise rospy.exceptions.ROSInterruptException('No message before timeout')
 
-    safety_client = SafetyClient('absolute_switch velocity_publisher')
+    safety_client = SafetyClient('absolute_switch_velocity_publisher')
     assert(safety_client.form_bond())
 
     while not rospy.is_shutdown():
