@@ -206,4 +206,4 @@ target_link_libraries(iarc7_sensors_altimeter_from_subscription_node
 # endif()
 
 ## Add folders to be run by python nosetests
-# catkin_add_nosetests(test)
+catkin_add_nosetests(test)
