@@ -50,7 +50,7 @@ if __name__ == '__main__':
            or safety_client.is_safety_active()):
             # We don't have a safety response for this node so just exit
             break
-        # Make sure we are within 10Hz of the 50Hz target update rate
+        # Make sure we are within 10Hz of the 30Hz target update rate
         if (rospy.Time.now() - last_msg_stamp) > rospy.Duration(1.0/(30.0-10.0)):
             rospy.logwarn('Absolute velocity from contact switches cant hit update rate')
         rate.sleep()
