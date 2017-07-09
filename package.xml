@@ -58,6 +58,7 @@
   <run_depend>tf2</run_depend>
   <run_depend>tf2_geometry_msgs</run_depend>
   <run_depend>tf2_ros</run_depend>
+  <run_depend>python-scipy</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
