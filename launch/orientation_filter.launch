@@ -1,0 +1,11 @@
+<launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+
+    <node name="orientation_filter" pkg="iarc7_sensors"
+        type="orientation_filter.py">
+        <rosparam command="load"
+            file="$(find iarc7_sensors)/param/orientation_filter.yaml" />
+    </node>
+    <param name="$(arg bond_id_namespace)/orientation_filter/form_bond"
+        value="true" />
+</launch>
