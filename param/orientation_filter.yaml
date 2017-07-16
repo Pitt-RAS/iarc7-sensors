@@ -1,0 +1,9 @@
+# Weight for the line-based orientation in the complementary filter
+# Must be in [0, 1]
+line_weight: 0.1
+
+# Number of messages to keep in the history
+message_queue_length: 20
+
+# Yaw measurement at startup (starts at first received yaw if undefined)
+initial_yaw: 0.0
