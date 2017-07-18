@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle private_nh("~");
 
     ROS_INFO("altimeter: Attempting to form safety bond");
-    Iarc7Safety::SafetyClient safety_client(n, "altimeter");
+    Iarc7Safety::SafetyClient safety_client(n, "Altimeter");
     ROS_ASSERT_MSG(safety_client.formBond(),
                    "altimeter: Could not form bond with safety client");
 
