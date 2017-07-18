@@ -8,7 +8,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
 #include <sensor_msgs/Range.h>
-#include "iarc7_safety/SafetyClient.hpp"
+#include <iarc7_safety/SafetyClient.hpp>
 
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
