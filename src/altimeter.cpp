@@ -8,6 +8,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
 #include <sensor_msgs/Range.h>
+#include "iarc7_safety/SafetyClient.hpp"
 
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
@@ -38,9 +39,15 @@ void reconnect(LidarLite& lidarLite)
 
 int main(int argc, char **argv) {
 
+
     ros::init(argc, argv, "altimeter");
     ros::NodeHandle n;
     ros::NodeHandle private_nh("~");
+
+    ROS_INFO("altimeter: Attempting to form safety bond");
+    Iarc7Safety::SafetyClient safety_client(n, "low_level_motion");
+    ROS_ASSERT_MSG(safety_client.formBond(),
+                   "altimeter: Could not form bond with safety client");
 
     // Fetch parameters from ROS
     std::string altitude_frame;
@@ -69,6 +76,9 @@ int main(int argc, char **argv) {
     connect(lidarLite);
 
     while(ros::ok() && lidarLite.error >= 0){
+
+        ROS_ASSERT_MSG(!safety_client.isFatalActive(),
+                       "altimeter: fatal event from safety");
         ros::spinOnce();
 
         // Fetch altitude from lidarlite
@@ -81,7 +91,10 @@ int main(int argc, char **argv) {
         success = success && (lidarLite.getVelocity(velocity_int) >= 0);
         double velocity = velocity_int / 100.0;
 
-        if (success) {
+        if(safety_client.isSafetyActive()){
+            ROS_ERROR("altimeter has died");
+            return 1;
+        }else if (success) {
             // Create messages to publish
             sensor_msgs::Range altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
