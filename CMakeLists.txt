@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   iarc7_msgs
+  iarc7_safety
   message_filters
   roscpp
   tf
