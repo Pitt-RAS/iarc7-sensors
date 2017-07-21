@@ -4,11 +4,11 @@
 
 #include "iarc7_sensors/AltimeterFilter.hpp"
 #include "lidarlite.hpp"
+#include "iarc7_safety/SafetyClient.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
 #include <sensor_msgs/Range.h>
-#include <iarc7_safety/SafetyClient.hpp>
 
 // Attempts to connect to the lidarlite until successful
 void connect(LidarLite& lidarLite) {
@@ -44,11 +44,6 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     ros::NodeHandle private_nh("~");
 
-    ROS_INFO("altimeter: Attempting to form safety bond");
-    Iarc7Safety::SafetyClient safety_client(n, "Altimeter");
-    ROS_ASSERT_MSG(safety_client.formBond(),
-                   "altimeter: Could not form bond with safety client");
-
     // Fetch parameters from ROS
     std::string altitude_frame;
     private_nh.param("output_frame", altitude_frame, std::string(""));
@@ -77,8 +72,6 @@ int main(int argc, char **argv) {
 
     while(ros::ok() && lidarLite.error >= 0){
 
-        ROS_ASSERT_MSG(!safety_client.isFatalActive(),
-                       "altimeter: fatal event from safety");
         ros::spinOnce();
 
         // Fetch altitude from lidarlite
@@ -91,10 +84,24 @@ int main(int argc, char **argv) {
         success = success && (lidarLite.getVelocity(velocity_int) >= 0);
         double velocity = velocity_int / 100.0;
 
-        if(safety_client.isSafetyActive()){
-            ROS_ERROR("altimeter has died");
-            return 1;
-        }else if (success) {
+        if (success) {
+
+            // Attempt to form bond to safety node on liderlite success
+            ROS_INFO("altimeter: Attempting to form safety bond");
+            Iarc7Safety::SafetyClient safety_client(n, "altimeter");
+            ROS_ASSERT_MSG(safety_client.formBond(),
+                    "altimeter: Could not form bond with safety client");
+
+            ROS_ASSERT_MSG(!safety_client.isFatalActive(),
+                       "altimeter: fatal event from safety");
+
+            // Exit early if altimeter dies
+            if (safety_client.isSafetyActive()
+             || safety_client.isFatalActive()) {
+                ROS_ERROR("altimeter has died");
+                return 1;
+            }
+
             // Create messages to publish
             sensor_msgs::Range altimeter_reading_msg;
             iarc7_msgs::Float64Stamped velocity_msg;
