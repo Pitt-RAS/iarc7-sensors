@@ -1,9 +1,14 @@
 <launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+
     <node name="long_range_altimeter" pkg="iarc7_sensors"
         type="iarc7_sensors_altimeter_node">
         <rosparam command="load"
             file="$(find iarc7_sensors)/param/long_range_altimeter.yaml" />
     </node>
+
+    <param name="$(arg bond_id_namespace)/long_range_altimeter/form_bond"
+        value="true" />
 
     <node name="short_range_altimeter" pkg="iarc7_sensors"
         type="iarc7_sensors_altimeter_from_subscription_node">
