@@ -4,7 +4,7 @@
 
 LidarLite::LidarLite()
 {
-    kI2CBus = 1 ;           // Default I2C bus for Lidar-Lite on Jetson TK1
+    kI2CBus = 0 ;           // Default I2C bus for Lidar-Lite on Jetson TK1
     error = 0 ;
 }
 

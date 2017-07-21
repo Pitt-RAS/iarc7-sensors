@@ -99,7 +99,9 @@ class OrientationFilter(object):
     def _callback(self, klass, msg):
         with self._lock:
             last_i = self._get_last_index(klass)
-            if msg.header.stamp <= self._queue[last_i][1].header.stamp:
+            if (last_i != -1
+                and msg.header.stamp <= self._queue[last_i][1].header.stamp):
+
                 # This message isn't newer than the last one of type klass
                 rospy.logwarn(
                     ('Ignoring message of type {} with timestamp {} older than '
