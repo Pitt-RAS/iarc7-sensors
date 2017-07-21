@@ -70,6 +70,16 @@ int main(int argc, char **argv) {
     // Connect to the lidarlite
     connect(lidarLite);
 
+    // Attempt to form bond to safety node after lidarlite is connected
+    ROS_INFO("altimeter: Attempting to form safety bond");
+    Iarc7Safety::SafetyClient safety_client(n, "altimeter");
+    ROS_ASSERT_MSG(safety_client.formBond(),
+            "altimeter: Could not form bond with safety client");
+
+    ROS_ASSERT_MSG(!safety_client.isFatalActive(),
+            "altimeter: fatal event from safety");
+
+
     while(ros::ok() && lidarLite.error >= 0){
 
         ros::spinOnce();
@@ -85,15 +95,6 @@ int main(int argc, char **argv) {
         double velocity = velocity_int / 100.0;
 
         if (success) {
-
-            // Attempt to form bond to safety node on liderlite success
-            ROS_INFO("altimeter: Attempting to form safety bond");
-            Iarc7Safety::SafetyClient safety_client(n, "altimeter");
-            ROS_ASSERT_MSG(safety_client.formBond(),
-                    "altimeter: Could not form bond with safety client");
-
-            ROS_ASSERT_MSG(!safety_client.isFatalActive(),
-                       "altimeter: fatal event from safety");
 
             // Exit early if altimeter dies
             if (safety_client.isSafetyActive()
