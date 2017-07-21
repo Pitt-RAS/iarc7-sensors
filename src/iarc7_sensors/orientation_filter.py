@@ -29,6 +29,10 @@ class OrientationFilter(object):
                 Float64Stamped,
                 lambda msg: self._callback(Float64Stamped, msg))
 
+        self._debug_orientation_pub = rospy.Publisher(
+                'orientation_filter/debug_orientation',
+                OrientationAnglesStamped)
+
         self._line_weight = rospy.get_param('~line_weight')
         self._message_queue_length = rospy.get_param('~message_queue_length')
 
@@ -69,6 +73,14 @@ class OrientationFilter(object):
 
         self._transform_broadcaster.sendTransform(transform_msg)
 
+        orientation_message = OrientationAnglesStamped()
+        orientation_message.header.stamp = time
+        orientation_message.data.pitch = p
+        orientation_message.data.roll = r
+        orientation_message.data.yaw = y
+
+        self._debug_orientation_pub.publish(orientation_message)
+
     def _get_last_index(self, klass, time=None):
         '''
         Return the index of the last message of type `klass` (or the
@@ -87,7 +99,9 @@ class OrientationFilter(object):
     def _callback(self, klass, msg):
         with self._lock:
             last_i = self._get_last_index(klass)
-            if msg.header.stamp <= self._queue[last_i][1].header.stamp:
+            if (last_i != -1
+                and msg.header.stamp <= self._queue[last_i][1].header.stamp):
+
                 # This message isn't newer than the last one of type klass
                 rospy.logwarn(
                     ('Ignoring message of type {} with timestamp {} older than '
