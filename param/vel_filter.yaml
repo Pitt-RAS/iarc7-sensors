@@ -1,0 +1,2 @@
+kalman_weight: 0.98
+message_queue_length: 1000
