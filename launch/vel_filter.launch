@@ -1,0 +1,11 @@
+<launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+
+    <node name="velocity_filter" pkg="iarc7_sensors"
+        type="vel_filter.py">
+        <rosparam command="load"
+            file="$(find iarc7_sensors)/param/vel_filter.yaml" />
+    </node>
+    <param name="$(arg bond_id_namespace)/velocity_filter/form_bond"
+        value="true" />
+</launch>
