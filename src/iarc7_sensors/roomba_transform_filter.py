@@ -1,20 +1,24 @@
 #!/usr/bin/env python2
 import rospy
 import tf2_ros
-
-from geometry_msgs.msg import TransformStamped
+import threading
 from iarc7_msgs.msg import OdometryArray
+from geometry_msgs.msg import TransformStamped
 
 class RoombaTransformFilter(object):
     def __init__(self):
         rospy.init_node('roomba_transform_filter')
 
+        self._lock = threading.Lock()
+
+        self._transform_broadcaster = tf2_ros.TransformBroadcaster()
+
+        self._last_published_stamp = rospy.Time(0)
+
         self._odometry_sub = rospy.Subscriber(
                 'roombas',
                 OdometryArray,
                 self._callback)
-
-        self._transform_broadcaster = tf2_ros.TransformBroadcaster()
 
         try:
             rospy.spin()
@@ -37,9 +41,12 @@ class RoombaTransformFilter(object):
         return transform_msg
 
     def _callback(self, msg):
-        for odom in msg.data:
-            transform_msg = self._construct_transform(odom)
-            self._transform_broadcaster.sendTransform(transform_msg)
+        with self._lock:
+            if len(msg.data) and self._last_published_stamp >= msg.data[0].header.stamp:
+                return
+            for odom in msg.data:
+                transform_msg = self._construct_transform(odom)
+                self._transform_broadcaster.sendTransform(transform_msg)
 
 if __name__ == '__main__':
     RoombaTransformFilter()
