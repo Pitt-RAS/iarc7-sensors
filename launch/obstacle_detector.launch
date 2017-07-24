@@ -1,0 +1,5 @@
+<launch>
+    <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector.py">
+        <rosparam command="load" file="$(find iarc7_sensors)/param/obstacle_detector.yaml" />
+    </node>
+</launch>
