@@ -1,11 +1,14 @@
 #!/usr/bin/env python2
 
 from iarc7_safety.SafetyClient import SafetyClient
+import math
 import rospy
 import threading
 
 from geometry_msgs.msg import TwistWithCovarianceStamped
 from nav_msgs.msg import Odometry
+
+last_time = rospy.Time()
 
 class VelocityFilter(object):
     def __init__(self):
@@ -42,22 +45,35 @@ class VelocityFilter(object):
         # The yaw in the 3-tuple is the current value of the filter at that
         # point, the pitch and roll are too except that they're simply
         # propogated forward from the last OrientationAnglesStamped message
-        self._queue = [([0.0, 0.0],
+        self._queue = [([0.0, 0.0, 0.0],
                         initial_msg, 'optical')]
 
-        self._vel_pub = rospy.Publisher('double_filtered_vel', TwistWithCovarianceStamped, queue_size=10)
+        self._vel_pub = rospy.Publisher('double_filtered_vel', Odometry, queue_size=10)
 
         self._last_published_stamp = rospy.Time(0)
 
-    def _publish_vel(self, x, y, time):
-        msg = TwistWithCovarianceStamped()
+    def _publish_vel(self, x, y, z, time):
+        msg = Odometry()
+
+        global last_time
+        assert time >= last_time
 
         msg.header.stamp = time
         msg.header.frame_id = 'map'
+        msg.child_frame_id = 'level_quad'
 
         msg.twist.twist.linear.x = x
         msg.twist.twist.linear.y = y
+        msg.twist.twist.linear.z = z
 
+        assert not math.isnan(msg.twist.twist.linear.x)
+        assert not math.isnan(msg.twist.twist.linear.y)
+        assert not math.isnan(msg.twist.twist.linear.z)
+        assert not math.isinf(msg.twist.twist.linear.x)
+        assert not math.isinf(msg.twist.twist.linear.y)
+        assert not math.isinf(msg.twist.twist.linear.z)
+
+        last_time = time
         self._vel_pub.publish(msg)
 
     def _get_last_index(self, klass, time=None):
@@ -82,7 +98,7 @@ class VelocityFilter(object):
                 and msg.header.stamp <= self._queue[last_i][1].header.stamp):
 
                 # This message isn't newer than the last one of type klass
-                rospy.logwarn(
+                rospy.logerr(
                     ('Ignoring message of type {} with timestamp {} older than '
                    + 'previous message with timestamp {}')
                         .format(
@@ -90,6 +106,17 @@ class VelocityFilter(object):
                             msg.header.stamp,
                             self._queue[last_i][1].header.stamp))
                 return
+
+            if (math.isnan(msg.twist.twist.linear.x)
+             or math.isnan(msg.twist.twist.linear.y)
+             or math.isinf(msg.twist.twist.linear.x)
+             or math.isinf(msg.twist.twist.linear.y)):
+                rospy.logerr('Velocity filter rejecting bad message: {}'.format(msg))
+
+            assert not math.isnan(msg.twist.twist.linear.x)
+            assert not math.isnan(msg.twist.twist.linear.y)
+            assert not math.isinf(msg.twist.twist.linear.x)
+            assert not math.isinf(msg.twist.twist.linear.y)
 
             for i in xrange(len(self._queue) - 1, -1, -1):
                 if self._queue[i][1].header.stamp < msg.header.stamp:
@@ -99,12 +126,13 @@ class VelocityFilter(object):
                 rospy.logerr('Skipping message older than everything in the queue')
                 return
 
-            self._queue.insert(index, ([float('NaN'), float('NaN')], msg, klass))
+            z_vel = float('NaN') if klass == 'optical' else msg.twist.twist.linear.z
+            self._queue.insert(index, ([float('NaN'), float('NaN'), z_vel], msg, klass))
             self._reprocess(index)
 
             # Make sure new timestamp is at least 1ns newer than the
             # last one
-            new_stamp = max(self._last_published_stamp + rospy.Duration(0, 1),
+            new_stamp = max(self._last_published_stamp + rospy.Duration(0, 1000),
                             self._queue[-1][1].header.stamp)
             self._publish_vel(*self._queue[-1][0], time=new_stamp)
             self._last_published_stamp = new_stamp
@@ -118,25 +146,29 @@ class VelocityFilter(object):
             klass = self._queue[i][2]
             last_differential_i = self._get_last_index('kalman',
                                                        msg.header.stamp)
+            assert last_differential_i < i and last_differential_i >= -1
+
+            # rospy.logwarn('i: {}\nmsg: {}\nklass: {}\nlast_diff_i: {}'.format(i, msg, klass, last_differential_i))
 
             if klass == 'kalman':
                 if last_differential_i == -1:
                     dx = 0.0
                     dy = 0.0
                 else:
-                    dx = -(msg.twist.twist.linear.x
+                    dx = (msg.twist.twist.linear.x
                            - self._queue[last_differential_i][1].twist.twist.linear.x)
-                    dy = -(msg.twist.twist.linear.y
+                    dy = (msg.twist.twist.linear.y
                            - self._queue[last_differential_i][1].twist.twist.linear.y)
 
                 self._queue[i][0][0] = self._queue[i-1][0][0] + dx
                 self._queue[i][0][1] = self._queue[i-1][0][1] + dy
 
             elif klass == 'optical':
-                self._queue[i][0][0] = ((1-self._kalman_weight)     * msg.twist.linear.x
+                self._queue[i][0][0] = ((1-self._kalman_weight)     * msg.twist.twist.linear.x
                                       + self._kalman_weight * self._queue[i-1][0][0])
-                self._queue[i][0][1] = ((1-self._kalman_weight)     * msg.twist.linear.y
+                self._queue[i][0][1] = ((1-self._kalman_weight)     * msg.twist.twist.linear.y
                                       + self._kalman_weight * self._queue[i-1][0][1])
+                self._queue[i][0][2] = self._queue[i-1][0][2]
             else:
                 assert False
 
