@@ -21,8 +21,8 @@ last_msg_stamp = None
 
 if __name__ == '__main__':
     rospy.init_node('absolute_vel_from_switches')
-    rospy.Subscriber('landing_gear_contact_switches', LandingGearContactsStamped, callback)
     pub = rospy.Publisher('absolute_vel', TwistWithCovarianceStamped, queue_size=0)
+    rospy.Subscriber('landing_gear_contact_switches', LandingGearContactsStamped, callback)
 
     rate = rospy.Rate(100)
 
