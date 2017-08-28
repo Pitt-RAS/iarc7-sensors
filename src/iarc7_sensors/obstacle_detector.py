@@ -111,14 +111,14 @@ def get_transform_matrices(tf_start, tf_end, samples):
                                   tf_end.transform.translation.y,
                                   tf_end.transform.translation.z])
 
-    orientation_start = np.array([tf_start.transform.rotation.w,
-                                  tf_start.transform.rotation.x,
+    orientation_start = np.array([tf_start.transform.rotation.x,
                                   tf_start.transform.rotation.y,
-                                  tf_start.transform.rotation.z])
-    orientation_end = np.array([tf_end.transform.rotation.w,
-                                tf_end.transform.rotation.x,
+                                  tf_start.transform.rotation.z,
+                                  tf_start.transform.rotation.w])
+    orientation_end = np.array([tf_end.transform.rotation.x,
                                 tf_end.transform.rotation.y,
-                                tf_end.transform.rotation.z])
+                                tf_end.transform.rotation.z,
+                                tf_end.transform.rotation.w])
 
     translation_matrices = get_translation_matrices(translation_start,
                                                     translation_end,
