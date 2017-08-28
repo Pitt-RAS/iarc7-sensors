@@ -1,5 +1,4 @@
 #!/usr/bin/env python2
-import rospy
 
 from iarc7_msgs.msg import OdometryArray
 from geometry_msgs.msg import Point
@@ -7,17 +6,16 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import Marker, MarkerArray
 
-from tf import transformations
-import tf2_ros
-
-
 import numpy as np
 np.set_printoptions(threshold='nan')
 
 from collections import deque
 import numpy.linalg as linalg
+import rospy
 import scipy.interpolate
 import scipy.optimize
+from tf import transformations
+import tf2_ros
 import uuid
 
 def slerp(q0, q1, t):
@@ -51,8 +49,10 @@ def get_circle(points, radius, drone_pos, settings):
 
     mean_point = np.mean(points, axis=0)
     guess_pos_offset = mean_point - drone_pos
-    guess_pos_offset *= ((linalg.norm(guess_pos_offset) + settings['obst_radius'])
-                       / linalg.norm(guess_pos_offset))
+    guess_pos_offset *= (
+            (linalg.norm(guess_pos_offset) + settings['obst_radius'])
+          / linalg.norm(guess_pos_offset)
+        )
     guess_pos = drone_pos + guess_pos_offset
 
     if points.shape[0] == 1:
@@ -163,7 +163,9 @@ def process_scan(scan, tf_start, tf_end, settings):
                                                   np.sin(valid_angles),
                                                   np.zeros(valid_angles.shape)])
     valid_range_points = np.einsum('it->ti', valid_range_points)
-    valid_range_points = np.concatenate((valid_range_points, np.ones((len(valid_ranges), 1))), axis=1)
+    valid_range_points = np.concatenate(
+            (valid_range_points, np.ones((len(valid_ranges), 1))),
+            axis=1)
 
     assert valid_range_points.shape == (len(valid_ranges), 4)
 
@@ -184,34 +186,28 @@ def process_scan(scan, tf_start, tf_end, settings):
 
     points = transformed_range_points[mask][:,:2]
 
-    rospy.logerr(mask)
-    rospy.logerr(transformed_range_points)
-
-    rospy.logerr(points.shape)
-
     if not points.size:
         rospy.loginfo('No valid points in laser scan, returning')
         return
 
     clusters = [[points[0]]]
     for i in xrange(1, len(points)):
-        if linalg.norm(points[i] - points[i-1]) < settings['new_cluster_threshold']:
+        if (linalg.norm(points[i] - points[i-1])
+                < settings['cluster_threshold']):
             clusters[-1].append(points[i])
         else:
             clusters.append([points[i]])
 
-    rospy.logwarn(clusters)
     # If the last cluster is close to the first one, combine them
     if (len(clusters) >= 2
         and linalg.norm(clusters[0][0] - clusters[-1][-1])
-                < settings['new_cluster_threshold']):
+                < settings['cluster_threshold']):
         clusters[0].extend(clusters.pop())
-
-    rospy.logwarn(clusters)
 
     msg = OdometryArray()
     marker_msg = MarkerArray()
-    arena_center = np.array((settings['arena_center_x'], settings['arena_center_y']))
+    arena_center = np.array((settings['arena_center_x'],
+                             settings['arena_center_y']))
 
     drone_pos = np.einsum('ij,j->i',
                           transform_matrices[0],
@@ -310,18 +306,24 @@ if __name__ == '__main__':
     settings['min_z'] = rospy.get_param('~min_z')
     settings['max_z'] = rospy.get_param('~max_z')
     settings['drone_radius'] = rospy.get_param('~drone_radius')
-    settings['new_cluster_threshold'] = rospy.get_param('~new_cluster_threshold')
+    settings['cluster_threshold'] = rospy.get_param('~cluster_threshold')
     settings['arena_center_x'] = rospy.get_param('~arena_center_x')
     settings['arena_center_y'] = rospy.get_param('~arena_center_y')
     settings['obst_radius'] = rospy.get_param('~obst_radius')
     settings['obst_speed'] = rospy.get_param('~obst_speed')
+    settings['max_queue_size'] = rospy.get_param('~max_queue_size')
 
     timeout = rospy.Duration(rospy.get_param('~timeout'))
 
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
-        # TODO: make this efficient
-        if msg_queue:
+        if len(msg_queue) > settings['max_queue_size']:
+            rospy.logwarn(
+                    'Obstacle detector message queue reached size %d, clearing'
+                    % len(msg_queue))
+            msg_queue.clear()
+
+        while msg_queue:
             msg = msg_queue.popleft()
             try:
                 tf_start = tf_buffer.lookup_transform('map',
@@ -331,13 +333,14 @@ if __name__ == '__main__':
                 tf_end = tf_buffer.lookup_transform(
                         'map',
                         msg.header.frame_id,
-                        msg.header.stamp + rospy.Duration(msg.time_increment * (len(msg.ranges) - 1)),
+                        msg.header.stamp + rospy.Duration(
+                            msg.time_increment * (len(msg.ranges) - 1)),
                         timeout)
             except tf2_ros.TransformException as ex:
                 rospy.logwarn(ex)
                 rospy.logwarn('Clearing obstacle_detector message queue')
                 msg_queue.clear()
-                continue
+            else:
+                process_scan(msg, tf_start, tf_end, settings)
 
-            process_scan(msg, tf_start, tf_end, settings)
         rate.sleep()

@@ -5,9 +5,10 @@ max_y: 5.0
 min_z: 0.2
 max_z: 4.0
 drone_radius: 0.6
-new_cluster_threshold: 0.2
+cluster_threshold: 0.2
 arena_center_x: 0.0
 arena_center_y: 0.0
 obst_radius: 0.05
 obst_speed: 0.3
 timeout: 0.5
+max_queue_size: 3
