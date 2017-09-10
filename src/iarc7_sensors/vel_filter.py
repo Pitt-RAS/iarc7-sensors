@@ -28,6 +28,7 @@ class VelocityFilter(object):
 
         self._kalman_weight = rospy.get_param('~kalman_weight')
         self._message_queue_length = rospy.get_param('~message_queue_length')
+        self._position_passthrough = rospy.get_param('~position_passthrough')
 
         initial_msg = TwistWithCovarianceStamped()
         initial_msg.header.stamp = rospy.Time()
@@ -51,7 +52,7 @@ class VelocityFilter(object):
 
         self._last_published_stamp = rospy.Time(0)
 
-    def _publish_vel(self, x, y, z, time):
+    def _publish_odom(self, x, y, z, vx, vy, vz, time):
         msg = Odometry()
 
         msg.header.stamp = time
@@ -66,9 +67,21 @@ class VelocityFilter(object):
         assert not math.isinf(y)
         assert not math.isinf(z)
 
-        msg.twist.twist.linear.x = x
-        msg.twist.twist.linear.y = y
-        msg.twist.twist.linear.z = z
+        assert not math.isnan(vx)
+        assert not math.isnan(vy)
+        assert not math.isnan(vz)
+
+        assert not math.isinf(vx)
+        assert not math.isinf(vy)
+        assert not math.isinf(vz)
+
+        msg.twist.twist.linear.x = vx
+        msg.twist.twist.linear.y = vy
+        msg.twist.twist.linear.z = vz
+
+        msg.pose.pose.position.x = x
+        msg.pose.pose.position.y = y
+        msg.pose.pose.position.z = z
 
         self._vel_pub.publish(msg)
 
@@ -132,7 +145,21 @@ class VelocityFilter(object):
             new_stamp = max(self._last_published_stamp + rospy.Duration(0, 100),
                             self._queue[-1][1].header.stamp)
 
-            self._publish_vel(*self._queue[-1][0], time=new_stamp)
+            last_kalman_i = self._get_last_index('kalman')
+            if last_kalman_i == -1 or not self._position_passthrough:
+                self._publish_odom(0.0,
+                                   0.0,
+                                   0.0,
+                                   *self._queue[-1][0],
+                                   time=new_stamp)
+            else:
+                last_kalman_msg = self._queue[last_kalman_i][1]
+                self._publish_odom(last_kalman_msg.pose.pose.position.x,
+                                   last_kalman_msg.pose.pose.position.y,
+                                   last_kalman_msg.pose.pose.position.z,
+                                   *self._queue[-1][0],
+                                   time=new_stamp)
+
             self._last_published_stamp = new_stamp
 
             while len(self._queue) > self._message_queue_length:
