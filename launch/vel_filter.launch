@@ -1,0 +1,14 @@
+<launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+    <arg name="position_passthrough" default="false"
+        doc="Should the velocity filter include the position estimates from the kalman filter?" />
+
+    <node name="velocity_filter" pkg="iarc7_sensors"
+        type="vel_filter.py">
+        <rosparam command="load"
+            file="$(find iarc7_sensors)/param/vel_filter.yaml" />
+        <param name="position_passthrough" value="false" />
+    </node>
+    <param name="$(arg bond_id_namespace)/velocity_filter/form_bond"
+        value="true" />
+</launch>
