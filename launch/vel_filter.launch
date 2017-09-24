@@ -7,7 +7,8 @@
         type="vel_filter.py">
         <rosparam command="load"
             file="$(find iarc7_sensors)/param/vel_filter.yaml" />
-        <param name="position_passthrough" value="false" />
+        <param name="position_passthrough"
+            value="$(arg position_passthrough)" />
     </node>
     <param name="$(arg bond_id_namespace)/velocity_filter/form_bond"
         value="true" />
