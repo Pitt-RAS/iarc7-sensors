@@ -1,12 +1,19 @@
 #!/usr/bin/env python2
-
 import rospy
+import rospkg
 import subprocess
 from std_msgs.msg import String
+
 
 def system_stat_monitor():
     
     rospy.init_node('system_stat_monitor')
+
+    #getting paths to bash scripts
+    rospack = rospkg.RosPack()
+    sensor_path = rospack.get_path('iarc7_sensors')
+    tegra_path = "".join([sensor_path,'/src/tegra.sh'])
+    ps_path = "".join([sensor_path,'/src/ps_run.sh'])
 
     #topic for string from ps_run
     ps_pub = rospy.Publisher('ps_stats', String, queue_size=20)
@@ -21,10 +28,10 @@ def system_stat_monitor():
         output = subprocess.check_output(['top','-bn1'])
         top_pub.publish(output)
 
-        output = subprocess.check_output(['./tegra.sh'])
+        output = subprocess.check_output([tegra_path])
         tegra_pub.publish(output)
 
-        output = subprocess.check_output(['./ps_run.sh'])
+        output = subprocess.check_output([ps_path])
         ps_pub.publish(output)
 
         rate.sleep()
