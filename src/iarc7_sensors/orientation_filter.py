@@ -31,7 +31,8 @@ class OrientationFilter(object):
 
         self._debug_orientation_pub = rospy.Publisher(
                 'orientation_filter/debug_orientation',
-                OrientationAnglesStamped)
+                OrientationAnglesStamped,
+                queue_size=10)
 
         self._line_weight = rospy.get_param('~line_weight')
         self._message_queue_length = rospy.get_param('~message_queue_length')

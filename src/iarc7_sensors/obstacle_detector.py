@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
-from iarc7_msgs.msg import OdometryArray
+from iarc7_msgs.msg import (Obstacle,
+                            ObstacleArray)
 from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -204,7 +205,7 @@ def process_scan(scan, tf_start, tf_end, settings):
                 < settings['cluster_threshold']):
         clusters[0].extend(clusters.pop())
 
-    msg = OdometryArray()
+    msg = ObstacleArray()
     marker_msg = MarkerArray()
     arena_center = np.array((settings['arena_center_x'],
                              settings['arena_center_y']))
@@ -230,23 +231,23 @@ def process_scan(scan, tf_start, tf_end, settings):
                 obst_orientation_angle,
                 (0.0, 0.0, 0.0))
 
-        obst_msg = Odometry()
-        obst_msg.header.stamp = scan.header.stamp
-        obst_msg.header.frame_id = 'map'
-        obst_msg.child_frame_id = 'obstacle{}'.format(str(uuid.uuid1()))
-        obst_msg.pose.pose.position.x = obst_pos[0]
-        obst_msg.pose.pose.position.y = obst_pos[1]
-        obst_msg.pose.pose.position.z = 0.0
+        obst_odom = Odometry()
+        obst_odom.header.stamp = scan.header.stamp
+        obst_odom.header.frame_id = 'map'
+        obst_odom.child_frame_id = 'obstacle{}'.format(str(uuid.uuid1()))
+        obst_odom.pose.pose.position.x = obst_pos[0]
+        obst_odom.pose.pose.position.y = obst_pos[1]
+        obst_odom.pose.pose.position.z = 0.0
 
-        obst_msg.pose.pose.orientation.x = orientation[0]
-        obst_msg.pose.pose.orientation.y = orientation[1]
-        obst_msg.pose.pose.orientation.z = orientation[2]
-        obst_msg.pose.pose.orientation.w = orientation[3]
+        obst_odom.pose.pose.orientation.x = orientation[0]
+        obst_odom.pose.pose.orientation.y = orientation[1]
+        obst_odom.pose.pose.orientation.z = orientation[2]
+        obst_odom.pose.pose.orientation.w = orientation[3]
 
-        obst_msg.twist.twist.linear.x = settings['obst_speed']
+        obst_odom.twist.twist.linear.x = settings['obst_speed']
 
         marker = Marker()
-        marker.header.stamp = obst_msg.header.stamp
+        marker.header.stamp = obst_odom.header.stamp
         marker.header.frame_id = 'map'
         marker.ns = 'obstacles'
 
@@ -279,7 +280,11 @@ def process_scan(scan, tf_start, tf_end, settings):
 
         marker_msg.markers.append(marker)
 
-        msg.data.append(obst_msg)
+        obst_msg = Obstacle()
+        obst_msg.header.stamp = obst_odom.header.stamp
+        obst_msg.odom = obst_odom
+
+        msg.obstacles.append(obst_msg)
 
     obstacle_pub.publish(msg)
 
@@ -290,7 +295,7 @@ if __name__ == '__main__':
     rospy.init_node('obstacle_detector')
     rospy.Subscriber('scan', LaserScan, scan_callback)
 
-    obstacle_pub = rospy.Publisher('obstacles', OdometryArray, queue_size=5)
+    obstacle_pub = rospy.Publisher('obstacles', ObstacleArray, queue_size=5)
     marker_pub = rospy.Publisher('obstacle_markers', MarkerArray, queue_size=5)
 
     tf_buffer = tf2_ros.Buffer()
