@@ -1,15 +1,32 @@
+# Obstacle detector configuration
+# Everything in mks units, all angles in radians, unless otherwise stated
+
+# Boundaries of the arena
+# Points outside of these boundaries are not considered obstacles
 min_x: -5.0
 max_x: 5.0
 min_y: -5.0
 max_y: 5.0
 min_z: 0.2
 max_z: 4.0
+
+# Points inside a cylinder of this radius are not considered obstacles
 drone_radius: 0.6
+
+# Points this close together or closer are considered part of the same obstacle
 cluster_threshold: 0.2
+
+# Position of the center of the arena
 arena_center_x: 0.0
 arena_center_y: 0.0
+
+# Parameters describing the obstacles
 obst_radius: 0.05
 obst_height: 3.0
 obst_speed: 0.3
+
+# Timeout for transform lookup
 timeout: 0.5
+
+# Max number of scans to store in queue
 max_queue_size: 3
