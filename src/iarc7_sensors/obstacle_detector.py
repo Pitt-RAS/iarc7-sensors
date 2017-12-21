@@ -188,6 +188,9 @@ def process_scan(scan, tf_start, tf_end, settings):
     points = transformed_range_points[mask][:,:2]
 
     if not points.size:
+        msg = ObstacleArray()
+        msg.header.stamp = scan.header.stamp
+        obstacle_pub.publish(msg)
         rospy.loginfo('No valid points in laser scan, returning')
         return
 
@@ -206,6 +209,7 @@ def process_scan(scan, tf_start, tf_end, settings):
         clusters[0].extend(clusters.pop())
 
     msg = ObstacleArray()
+    msg.header.stamp = scan.header.stamp
     marker_msg = MarkerArray()
     arena_center = np.array((settings['arena_center_x'],
                              settings['arena_center_y']))
@@ -229,7 +233,7 @@ def process_scan(scan, tf_start, tf_end, settings):
         obst_orientation_angle = np.arctan2(obst_vel[1], obst_vel[0])
         orientation = transformations.quaternion_about_axis(
                 obst_orientation_angle,
-                (0.0, 0.0, 0.0))
+                (0.0, 0.0, 1.0))
 
         obst_odom = Odometry()
         obst_odom.header.stamp = scan.header.stamp
@@ -283,6 +287,8 @@ def process_scan(scan, tf_start, tf_end, settings):
         obst_msg = Obstacle()
         obst_msg.header.stamp = obst_odom.header.stamp
         obst_msg.odom = obst_odom
+        obst_msg.pipe_radius = settings['obst_radius']
+        obst_msg.pipe_height = settings['obst_height']
 
         msg.obstacles.append(obst_msg)
 
@@ -315,6 +321,7 @@ if __name__ == '__main__':
     settings['arena_center_x'] = rospy.get_param('~arena_center_x')
     settings['arena_center_y'] = rospy.get_param('~arena_center_y')
     settings['obst_radius'] = rospy.get_param('~obst_radius')
+    settings['obst_height'] = rospy.get_param('~obst_height')
     settings['obst_speed'] = rospy.get_param('~obst_speed')
     settings['max_queue_size'] = rospy.get_param('~max_queue_size')
 

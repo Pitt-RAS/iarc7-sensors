@@ -22,7 +22,7 @@ def test_get_rotation_matrices():
     q0 = np.array((0.0, 0.0, 0.0, 1.0))
     q1 = transformations.quaternion_about_axis(math.pi, (0, 0, 1))
 
-    result = obstacle_detector.get_rotation_matrices(q0, q1, 3)
+    result = obstacle_detector.get_rotation_matrices(q0, q1, np.array((0.0, 0.5, 1.0)))
 
     assert result.shape == (3, 4, 4)
 
@@ -43,7 +43,7 @@ def test_get_translation_matrices():
     v1 = np.array([1.0, 2.0, 3.0])
     v2 = np.array([4.0, 5.0, 6.0])
 
-    result = obstacle_detector.get_translation_matrices(v1, v2, 3)
+    result = obstacle_detector.get_translation_matrices(v1, v2, np.array((0.0, 0.5, 1.0)))
 
     assert result.shape == (3, 4, 4)
 
