@@ -437,7 +437,7 @@ if __name__ == '__main__':
 
     timeout = rospy.Duration(rospy.get_param('~timeout'))
 
-    rate = rospy.Rate(20)
+    rate = rospy.Rate(rospy.get_param('~max_update_rate'))
     while not rospy.is_shutdown():
         if len(msg_queue) > settings['max_queue_size']:
             rospy.logwarn(

@@ -30,3 +30,6 @@ timeout: 0.5
 
 # Max number of scans to store in queue
 max_queue_size: 3
+
+# Rate to check for new messages
+max_update_rate: 20
