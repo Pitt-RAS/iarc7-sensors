@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # to safety
     start_time = rospy.Time.now()
     while True:
-        assert((rospy.Time.now() - start_time) < rospy.Duration(10.0))
+        assert((rospy.Time.now() - start_time) < rospy.Duration(20.0))
         if last_msg_stamp is not None:
             break
         if rospy.is_shutdown():
