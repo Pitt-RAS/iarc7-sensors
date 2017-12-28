@@ -52,5 +52,6 @@ if __name__ == '__main__':
             break
         # Make sure we are within 10Hz of the 30Hz target update rate
         if (rospy.Time.now() - last_msg_stamp) > rospy.Duration(1.0/(30.0-10.0)):
-            rospy.logwarn('Absolute velocity from contact switches cant hit update rate')
+            rospy.logwarn_throttle(1.0,
+                'Absolute velocity from contact switches cant hit update rate')
         rate.sleep()
