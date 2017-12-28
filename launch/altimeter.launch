@@ -1,20 +1,25 @@
 <launch>
     <arg name="bond_id_namespace" default="safety_bonds" />
+    <arg name="altimeter_name" default="" />
 
-    <node name="long_range_altimeter" pkg="iarc7_sensors"
-        type="iarc7_sensors_altimeter_node">
-        <rosparam command="load"
-            file="$(find iarc7_sensors)/param/long_range_altimeter.yaml" />
-    </node>
+    <group if="$(eval arg('altimeter_name') == 'lidarlite_v2')" >
+        <node name="long_range_altimeter" pkg="iarc7_sensors"
+            type="iarc7_sensors_altimeter_node">
+            <rosparam command="load"
+                file="$(find iarc7_sensors)/param/long_range_altimeter.yaml" />
+        </node>
 
-    <param name="$(arg bond_id_namespace)/long_range_altimeter/form_bond"
-        value="true" />
+        <param name="$(arg bond_id_namespace)/long_range_altimeter/form_bond"
+            value="true" />
+    </group>
 
-    <node name="short_range_altimeter" pkg="iarc7_sensors"
-        type="iarc7_sensors_altimeter_from_subscription_node">
-        <rosparam command="load"
-            file="$(find iarc7_sensors)/param/short_range_altimeter.yaml" />
-        <remap from="altimeter_reading" to="short_distance_lidar" />
-        <remap from="altimeter_pose" to="short_distance_lidar_pose" />
-    </node>
+    <group if="$(eval arg('altimeter_name') == 'vl53L0x')" >
+        <node name="short_range_altimeter" pkg="iarc7_sensors"
+            type="iarc7_sensors_altimeter_from_subscription_node">
+            <rosparam command="load"
+                file="$(find iarc7_sensors)/param/short_range_altimeter.yaml" />
+            <remap from="altimeter_reading" to="short_distance_lidar" />
+            <remap from="altimeter_pose" to="short_distance_lidar_pose" />
+        </node>
+    </group>
 </launch>
