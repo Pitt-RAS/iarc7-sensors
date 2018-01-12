@@ -28,7 +28,14 @@ if __name__ == '__main__':
     rospy.Subscriber('landing_gear_contact_switches', LandingGearContactsStamped, switch_callback)
     rospy.Subscriber('odometry/filtered', Odometry, odom_callback)
 
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(rospy.get_param('~update_rate'))
+
+    switch_expected_update_rate = rospy.get_param('~switch_expected_update_rate')
+    switch_update_lag_tolerance = rospy.get_param('~switch_update_lag_tolerance')
+    switch_startup_timeout = rospy.get_param('~switch_startup_timeout')
+    landing_detected_height = rospy.get_param('~landing_detected_height')
+    takeoff_detected_height = rospy.get_param('~takeoff_detected_height')
+    takeoff_detected_override_height = rospy.get_param('~takeoff_detected_override_height')
 
     # Wait for a valid timestamp
     while rospy.Time.now() == rospy.Time(0):
