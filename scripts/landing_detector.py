@@ -14,15 +14,11 @@ def switch_callback(msg):
     last_switch_message = msg
 
 def odom_callback(msg):
-    global below_min_height
-
-    if height_indicates_landed:
-        below_min_height = msg.pose.pose.position.z > 0.5
-    else:
-        below_min_height = msg.pose.pose.position.z < 0.3
+    global last_height
+    last_height = msg.pose.pose.position.z
 
 last_switch_message = None
-height_indicates_landed = True
+last_height = 0.0
 
 if __name__ == '__main__':
     rospy.init_node('landing_detector')
@@ -63,11 +59,20 @@ if __name__ == '__main__':
             rospy.logwarn_throttle(1.0,
                 'Landing Detector is not receiving switch messages fast enough')
 
-        landing_detected = (last_switch_message.front 
+
+
+        if height_indicates_landed:
+            below_min_height = last_height > 0.5
+        else:
+            below_min_height = last_height < 0.3
+
+        landing_detected = ((last_switch_message.front
                             + last_switch_message.back
                             + last_switch_message.left
                             + last_switch_message.right
-                            + height_indicates_landed) > 3
+                            + below_min_height) > 3
+                            and not last_height > 0.6)
+
 
         if landing_detected:
             # Publish the fact that the velocity is 0
