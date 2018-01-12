@@ -5,6 +5,7 @@
         type="orientation_filter.py">
         <rosparam command="load"
             file="$(find iarc7_sensors)/param/orientation_filter.yaml" />
+        <remap from="line_yaw" to="/grid_line_estimator/line_yaw" />
     </node>
     <param name="$(arg bond_id_namespace)/orientation_filter/form_bond"
         value="true" />
