@@ -19,6 +19,7 @@ def odom_callback(msg):
 
 last_switch_message = None
 last_height = 0.0
+height_indicates_landed = False
 
 if __name__ == '__main__':
     rospy.init_node('landing_detector')
@@ -62,15 +63,15 @@ if __name__ == '__main__':
 
 
         if height_indicates_landed:
-            below_min_height = last_height > 0.5
+            height_indicates_landed = last_height > 0.5
         else:
-            below_min_height = last_height < 0.3
+            height_indicates_landed = last_height < 0.3
 
         landing_detected = ((last_switch_message.front
                             + last_switch_message.back
                             + last_switch_message.left
                             + last_switch_message.right
-                            + below_min_height) > 3
+                            + height_indicates_landed) > 3
                             and not last_height > 0.6)
 
 
