@@ -41,6 +41,7 @@ if __name__ == '__main__':
     while rospy.Time.now() == rospy.Time(0):
         if rospy.is_shutdown():
             raise rospy.exceptions.ROSInterruptException('No valid timestamp before shutdown')
+        rate.sleep()
 
     # Make sure a message is recieved and published before connecting
     # to safety
