@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # to safety
     start_time = rospy.Time.now()
     while not rospy.is_shutdown():
-        assert((rospy.Time.now() - start_time) < rospy.Duration(20.0))
+        assert((rospy.Time.now() - start_time) < rospy.Duration(switch_startup_timeout))
         if last_switch_message is not None:
             break
         if rospy.is_shutdown():
@@ -63,22 +63,25 @@ if __name__ == '__main__':
             # We don't have a safety response for this node so just exit
             break
 
-        # Make sure we are within 10Hz of the 30Hz target update rate for switch updates
-        if (rospy.Time.now() - last_switch_message.header.stamp) > rospy.Duration(1.0/(30.0-10.0)):
+        # Make sure we are within 10Hz of the 30Hz target
+        # update rate for switch updates
+        if ((rospy.Time.now() - last_switch_message.header.stamp)
+            > rospy.Duration(1.0/(switch_expected_update_rate
+                                  -switch_update_lag_tolerance))):
             rospy.logwarn_throttle(1.0,
                 'Landing Detector is not receiving switch messages fast enough')
 
         if height_indicates_landed:
-            height_indicates_landed = last_height > 0.5
+            height_indicates_landed = last_height < takeoff_detected_height
         else:
-            height_indicates_landed = last_height < 0.3
+            height_indicates_landed = last_height < landing_detected_height
 
         landing_detected = ((last_switch_message.front
                             + last_switch_message.back
                             + last_switch_message.left
                             + last_switch_message.right
                             + height_indicates_landed) > 3
-                            and not last_height > 0.6)
+                            and not last_height > takeoff_detected_override_height)
 
 
         if landing_detected:
