@@ -38,7 +38,7 @@ if __name__ == '__main__':
     takeoff_detected_override_height = rospy.get_param('~takeoff_detected_override_height')
 
     # Wait for a valid timestamp
-    while rospy.Time.now() == rospy.Time(0):
+    while rospy.Time.now() == rospy.Time(0) and not rospy.is_shutdown():
         if rospy.is_shutdown():
             raise rospy.exceptions.ROSInterruptException('No valid timestamp before shutdown')
         rate.sleep()
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Make sure a message is recieved and published before connecting
     # to safety
     start_time = rospy.Time.now()
-    while True:
+    while not rospy.is_shutdown():
         assert((rospy.Time.now() - start_time) < rospy.Duration(20.0))
         if last_switch_message is not None:
             break
@@ -67,8 +67,6 @@ if __name__ == '__main__':
         if (rospy.Time.now() - last_switch_message.header.stamp) > rospy.Duration(1.0/(30.0-10.0)):
             rospy.logwarn_throttle(1.0,
                 'Landing Detector is not receiving switch messages fast enough')
-
-
 
         if height_indicates_landed:
             height_indicates_landed = last_height > 0.5
