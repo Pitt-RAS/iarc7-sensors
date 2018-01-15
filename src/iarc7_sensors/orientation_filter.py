@@ -135,9 +135,10 @@ class OrientationFilter(object):
                 and not math.isnan(self._queue[-1][0][1])
                 and not math.isnan(self._queue[-1][0][2])):
 
-                # Make sure new timestamp is at least 1ns newer than the
-                # last one
-                new_stamp = max(self._last_published_stamp + rospy.Duration(0, 1),
+                # Make sure new timestamp is at least 1us newer than the
+                # last one. Using 1ns was dangerous and caused the tf library
+                # to create transforms with NaN values
+                new_stamp = max(self._last_published_stamp + rospy.Duration(0, 1000),
                                 self._queue[-1][1].header.stamp)
                 self._publish_transform(*reversed(self._queue[-1][0]), time=new_stamp)
                 self._last_published_stamp = new_stamp

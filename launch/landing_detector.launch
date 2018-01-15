@@ -1,0 +1,11 @@
+<launch>
+    <arg name="platform" default="sim" doc="string representing the platform" />
+    <arg name="bond_id_namespace" default="safety_bonds" />
+
+    <node name="landing_detector" pkg="iarc7_sensors" type="landing_detector.py">
+        <rosparam command="load" file="$(find iarc7_sensors)/param/landing_detector_$(arg platform).yaml" />
+    </node>
+
+    <param name="$(arg bond_id_namespace)/landing_detector/form_bond"
+        value="true" />
+</launch>
