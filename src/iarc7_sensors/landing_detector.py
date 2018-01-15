@@ -38,7 +38,7 @@ if __name__ == '__main__':
     takeoff_detected_override_height = rospy.get_param('~takeoff_detected_override_height')
 
     # Wait for a valid timestamp
-    while rospy.Time.now() == rospy.Time(0) and not rospy.is_shutdown():
+    while rospy.Time.now() == rospy.Time(0):
         if rospy.is_shutdown():
             raise rospy.exceptions.ROSInterruptException('No valid timestamp before shutdown')
         rate.sleep()
@@ -46,12 +46,10 @@ if __name__ == '__main__':
     # Make sure a message is recieved and published before connecting
     # to safety
     start_time = rospy.Time.now()
-    while not rospy.is_shutdown():
+    while last_switch_message is None: 
         assert((rospy.Time.now() - start_time) < rospy.Duration(switch_startup_timeout))
-        if last_switch_message is not None:
-            break
         if rospy.is_shutdown():
-            raise rospy.exceptions.ROSInterruptException('No message before timeout')
+            raise rospy.exceptions.ROSInterruptException('No message before shutdown')
         rate.sleep()
 
     safety_client = SafetyClient('landing_detector')
@@ -63,8 +61,7 @@ if __name__ == '__main__':
             # We don't have a safety response for this node so just exit
             break
 
-        # Make sure we are within 10Hz of the 30Hz target
-        # update rate for switch updates
+        # Make sure we are within the target update rate
         if ((rospy.Time.now() - last_switch_message.header.stamp)
             > rospy.Duration(1.0/(switch_expected_update_rate
                                   -switch_update_lag_tolerance))):
@@ -81,7 +78,7 @@ if __name__ == '__main__':
                             + last_switch_message.left
                             + last_switch_message.right
                             + height_indicates_landed) > 3
-                            and not last_height > takeoff_detected_override_height)
+                            and last_height <= takeoff_detected_override_height)
 
 
         if landing_detected:

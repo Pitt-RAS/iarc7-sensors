@@ -1,13 +1,13 @@
-# Update rate
+# Update rate in Hz
 update_rate: 100
 
-# Switch expected update rate
+# Switch expected update rate in Hz
 switch_expected_update_rate: 30
 
-# Switch update lag tolerance
+# Switch update lag tolerance in Hz
 switch_update_lag_tolerance: 10
 
-# Switch startup timeout
+# Switch startup timeout in seconds
 switch_startup_timeout: 20
 
 # Landing detected height threshold
