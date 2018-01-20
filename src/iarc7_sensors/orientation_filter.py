@@ -74,6 +74,8 @@ class OrientationFilter(object):
 
         self._transform_broadcaster.sendTransform(transform_msg)
 
+        transform_msg.header.stamp = time
+        transform_msg.header.frame_id = 'level_quad'
         transform_msg.child_frame_id = 'heading_quad'
 
         quaternion = tf.transformations.quaternion_from_euler(0, 0, y)
