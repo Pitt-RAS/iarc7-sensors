@@ -74,6 +74,18 @@ class OrientationFilter(object):
 
         self._transform_broadcaster.sendTransform(transform_msg)
 
+        transform_msg.header.stamp = time
+        transform_msg.header.frame_id = 'level_quad'
+        transform_msg.child_frame_id = 'heading_quad'
+
+        quaternion = tf.transformations.quaternion_from_euler(0, 0, y)
+        transform_msg.transform.rotation.x = quaternion[0]
+        transform_msg.transform.rotation.y = quaternion[1]
+        transform_msg.transform.rotation.z = quaternion[2]
+        transform_msg.transform.rotation.w = quaternion[3]
+
+        self._transform_broadcaster.sendTransform(transform_msg)
+
         orientation_message = OrientationAnglesStamped()
         orientation_message.header.stamp = time
         orientation_message.data.pitch = p
