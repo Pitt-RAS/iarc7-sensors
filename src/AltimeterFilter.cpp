@@ -37,7 +37,7 @@ void AltimeterFilter::updateFilter(const sensor_msgs::Range& msg)
     if (!std::isfinite(msg.range)
      || msg.range < msg.min_range
      || msg.range > msg.max_range) {
-        ROS_WARN("AltimeterFilter skipped out-of-range reading (%f)", msg.range);
+        ROS_DEBUG("AltimeterFilter skipped out-of-range reading (%f)", msg.range);
         return;
     }
 
