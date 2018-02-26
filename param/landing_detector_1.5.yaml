@@ -1,20 +1,11 @@
 # Update rate in Hz
 update_rate: 100
 
-# Switch expected update rate in Hz
-switch_expected_update_rate: 30
-
-# Switch update lag tolerance in Hz
-switch_update_lag_tolerance: 10
-
-# Switch startup timeout in seconds
-switch_startup_timeout: 20
-
 # Landing detected height threshold
 landing_detected_height: 0.06
 
 # Takeoff detected height threshold
 takeoff_detected_height: 0.10
 
-# Override switches on takeoff height theshold
-takeoff_detected_override_height: 0.2
+# Whether or not to use the switches
+use_switches: false
