@@ -1,2 +1,2 @@
-output_frame: 'long_distance_lidar'
-altitude_variance:
+output_frame: 'tfmini'
+altitude_variance: 0.0036
