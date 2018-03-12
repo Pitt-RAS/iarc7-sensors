@@ -25,17 +25,20 @@ if __name__ == '__main__':
     rospy.init_node('landing_detector')
     absolute_velocity_pub = rospy.Publisher('absolute_vel', TwistWithCovarianceStamped, queue_size=0)
     landing_detected_pub = rospy.Publisher('landing_detected', BoolStamped, queue_size=0)
-    rospy.Subscriber('landing_gear_contact_switches', LandingGearContactsStamped, switch_callback)
     rospy.Subscriber('odometry/filtered', Odometry, odom_callback)
 
     rate = rospy.Rate(rospy.get_param('~update_rate'))
 
-    switch_expected_update_rate = rospy.get_param('~switch_expected_update_rate')
-    switch_update_lag_tolerance = rospy.get_param('~switch_update_lag_tolerance')
-    switch_startup_timeout = rospy.get_param('~switch_startup_timeout')
     landing_detected_height = rospy.get_param('~landing_detected_height')
     takeoff_detected_height = rospy.get_param('~takeoff_detected_height')
-    takeoff_detected_override_height = rospy.get_param('~takeoff_detected_override_height')
+    use_switches = rospy.get_param('~use_switches')
+
+    if use_switches:
+        takeoff_detected_override_height = rospy.get_param('~takeoff_detected_override_height')
+        switch_expected_update_rate = rospy.get_param('~switch_expected_update_rate')
+        switch_update_lag_tolerance = rospy.get_param('~switch_update_lag_tolerance')
+        switch_startup_timeout = rospy.get_param('~switch_startup_timeout')
+        rospy.Subscriber('landing_gear_contact_switches', LandingGearContactsStamped, switch_callback)
 
     # Wait for a valid timestamp
     while rospy.Time.now() == rospy.Time(0):
@@ -46,11 +49,13 @@ if __name__ == '__main__':
     # Make sure a message is recieved and published before connecting
     # to safety
     start_time = rospy.Time.now()
-    while last_switch_message is None: 
-        assert((rospy.Time.now() - start_time) < rospy.Duration(switch_startup_timeout))
-        if rospy.is_shutdown():
-            raise rospy.exceptions.ROSInterruptException('No message before shutdown')
-        rate.sleep()
+
+    if use_switches:
+        while last_switch_message is None: 
+            assert((rospy.Time.now() - start_time) < rospy.Duration(switch_startup_timeout))
+            if rospy.is_shutdown():
+                raise rospy.exceptions.ROSInterruptException('No message before shutdown')
+            rate.sleep()
 
     safety_client = SafetyClient('landing_detector')
     assert(safety_client.form_bond())
@@ -62,23 +67,28 @@ if __name__ == '__main__':
             break
 
         # Make sure we are within the target update rate
-        if ((rospy.Time.now() - last_switch_message.header.stamp)
-            > rospy.Duration(1.0/(switch_expected_update_rate
-                                  -switch_update_lag_tolerance))):
-            rospy.logwarn_throttle(1.0,
-                'Landing Detector is not receiving switch messages fast enough')
+        if use_switches:
+            if ((rospy.Time.now() - last_switch_message.header.stamp)
+                > rospy.Duration(1.0/(switch_expected_update_rate
+                                      -switch_update_lag_tolerance))):
+                rospy.logwarn_throttle(1.0,
+                    'Landing Detector is not receiving switch messages fast enough')
 
         if height_indicates_landed:
             height_indicates_landed = last_height < takeoff_detected_height
         else:
             height_indicates_landed = last_height < landing_detected_height
 
-        landing_detected = ((last_switch_message.front
-                            + last_switch_message.back
-                            + last_switch_message.left
-                            + last_switch_message.right
-                            + height_indicates_landed) > 3
-                            and last_height <= takeoff_detected_override_height)
+        if use_switches:
+            landing_detected = ((last_switch_message.front
+                                + last_switch_message.back
+                                + last_switch_message.left
+                                + last_switch_message.right
+                                + height_indicates_landed) > 3
+                                and last_height <= takeoff_detected_override_height)
+        else:
+            # No need to use the override in this case
+            landing_detected = height_indicates_landed
 
 
         if landing_detected:
