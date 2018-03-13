@@ -9,7 +9,6 @@ import rospy
 import math
 
 from iarc7_safety.SafetyClient import SafetyClient
-
 from iarc7_msgs.msg import (OdometryArray, 
                             RoombaStateStamped, 
                             RoombaStateStampedArray)
@@ -26,9 +25,6 @@ class Roomba(object):
         self._speed_indicates_turning = False
         self._turning_detected_speed = rospy.get_param('~turning_detected_speed')
         self._moving_detected_speed = rospy.get_param('~moving_detected_speed')
-
-    def __eq__(self, roomba): 
-        return self._roomba_id == roomba._roomba_id
 
     def update_state(self, odometry): 
         roomba_x_velocity = odometry.twist.twist.linear.x
@@ -95,10 +91,12 @@ if __name__ == '__main__':
             # We don't have a safety response for this node so just exit
             break
 
+        roomba_states_msg = RoombaStateStampedArray()
+
         for odom in roomba_odoms.data: 
             roomba_id = odom.child_frame_id
             
-            if not odom.child_frame_id in roomba_dict: 
+            if not roomba_id in roomba_dict: 
                 roomba = Roomba(roomba_id)
                 roomba_dict[roomba_id] = roomba
             else: 
@@ -107,13 +105,11 @@ if __name__ == '__main__':
             roomba.update_state(odom)
 
             state_msg = RoombaStateStamped()
-            roomba_states_msg = RoombaStateStampedArray()
-
             state_msg.header.stamp = rospy.Time.now()
             state_msg.roomba_id = roomba_id
             state_msg.moving_forward = roomba.is_moving_forward()
             state_msg.turning = roomba.is_turning_around()
-
+            
             roomba_states_msg.roombas.append(state_msg)
 
         state_pub.publish(roomba_states_msg)
