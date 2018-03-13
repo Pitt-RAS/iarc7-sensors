@@ -1,0 +1,11 @@
+<launch>
+    <arg name="platform" default="sim" doc="string representing the platform" />
+    <arg name="bond_id_namespace" default="safety_bonds" />
+
+    <node name="roomba_state_estimator" pkg="iarc7_sensors" type="roomba_state_estimator.py">
+        <rosparam command="load" file="$(find iarc7_sensors)/param/roomba_state_estimator.yaml" />
+    </node>
+
+    <param name="$(arg bond_id_namespace)/roomba_state_estimator/form_bond"
+        value="true" />
+</launch>
