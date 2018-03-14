@@ -161,6 +161,18 @@ target_link_libraries(iarc7_sensors_altimeter_from_subscription_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(iarc7_nano_transcriber
+   src/Nano_transcriber.cpp
+)
+ add_dependencies(iarc7_sensors_altimeter_from_subscription_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(iarc7_nano_transcriber
+   ${catkin_LIBRARIES}
+)
+
+
 #############
 ## Install ##
 #############
