@@ -2,7 +2,7 @@
 # Everything in mks units, all angles in radians, unless otherwise stated
 
 # Rate to check for new messages
-roomba_state_estimator_update_rate: 30
+roomba_state_estimator_update_rate: 20
 
 # how long (in seconds) 
 # to wait on a roomba message
@@ -15,3 +15,6 @@ turning_detected_speed: .10
 # speeds above this indicate
 # the roomba is moving forward
 moving_detected_speed: .25
+
+# expected velocity for a roomba
+roomba_expected_vel: .30
