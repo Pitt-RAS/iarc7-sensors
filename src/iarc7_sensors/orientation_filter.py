@@ -17,47 +17,48 @@ class OrientationFilter(object):
 
         self._lock = threading.Lock()
 
-        self._orientation_sub = rospy.Subscriber(
-                'fc_orientation',
-                OrientationAnglesStamped,
-                lambda msg: self._callback(OrientationAnglesStamped, msg))
+        with self._lock:
+            self._orientation_sub = rospy.Subscriber(
+                    'fc_orientation',
+                    OrientationAnglesStamped,
+                    lambda msg: self._callback(OrientationAnglesStamped, msg))
 
-        # This topic is assumed to have rotation around +z
-        # (angle from +x with +y being +pi/2)
-        self._line_yaw_sub = rospy.Subscriber(
-                'line_yaw',
-                Float64Stamped,
-                lambda msg: self._callback(Float64Stamped, msg))
+            # This topic is assumed to have rotation around +z
+            # (angle from +x with +y being +pi/2)
+            self._line_yaw_sub = rospy.Subscriber(
+                    'line_yaw',
+                    Float64Stamped,
+                    lambda msg: self._callback(Float64Stamped, msg))
 
-        self._debug_orientation_pub = rospy.Publisher(
-                'orientation_filter/debug_orientation',
-                OrientationAnglesStamped,
-                queue_size=10)
+            self._debug_orientation_pub = rospy.Publisher(
+                    'orientation_filter/debug_orientation',
+                    OrientationAnglesStamped,
+                    queue_size=10)
 
-        self._line_weight = rospy.get_param('~line_weight')
-        self._message_queue_length = rospy.get_param('~message_queue_length')
+            self._line_weight = rospy.get_param('~line_weight')
+            self._message_queue_length = rospy.get_param('~message_queue_length')
 
-        initial_msg = Float64Stamped()
-        initial_msg.header.stamp = rospy.Time()
-        initial_msg.data = rospy.get_param('~initial_yaw', float('NaN'))
+            initial_msg = Float64Stamped()
+            initial_msg.header.stamp = rospy.Time()
+            initial_msg.data = rospy.get_param('~initial_yaw', float('NaN'))
 
-        # This queue contains pairs, sorted by timestamp, oldest at index 0
-        #
-        # First item of each pair is a 3-tuple containing:
-        #     yaw (rotation around +z)
-        #     pitch (rotation around +y')
-        #     roll (rotation around +x'')
-        # Second item of each pair is the message itself
-        #
-        # The yaw in the 3-tuple is the current value of the filter at that
-        # point, the pitch and roll are too except that they're simply
-        # propogated forward from the last OrientationAnglesStamped message
-        self._queue = [([initial_msg.data, float('NaN'), float('NaN')],
-                        initial_msg)]
+            # This queue contains pairs, sorted by timestamp, oldest at index 0
+            #
+            # First item of each pair is a 3-tuple containing:
+            #     yaw (rotation around +z)
+            #     pitch (rotation around +y')
+            #     roll (rotation around +x'')
+            # Second item of each pair is the message itself
+            #
+            # The yaw in the 3-tuple is the current value of the filter at that
+            # point, the pitch and roll are too except that they're simply
+            # propogated forward from the last OrientationAnglesStamped message
+            self._queue = [([initial_msg.data, float('NaN'), float('NaN')],
+                            initial_msg)]
 
-        self._transform_broadcaster = tf2_ros.TransformBroadcaster()
+            self._transform_broadcaster = tf2_ros.TransformBroadcaster()
 
-        self._last_published_stamp = rospy.Time(0)
+            self._last_published_stamp = rospy.Time(0)
 
     def _publish_transform(self, r, p, y, time):
         transform_msg = TransformStamped()
