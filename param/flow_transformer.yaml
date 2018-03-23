@@ -1,0 +1,11 @@
+# Settings for the flow transformer	
+flow_transformer:
+
+	#fov of the camera (in radians)
+	fov: 0.733
+
+	# Minimum altitude to run the optical flow sensor
+	min_estimation_altitude: 0.08
+
+  # Width/height of pixels 
+  
