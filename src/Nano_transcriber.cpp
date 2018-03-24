@@ -1,9 +1,11 @@
 #include <sensor_msgs/Range.h>
 #include <iarc7_msgs/Nano.h>
 #include <iarc7_msgs/FlowVector.h>
+#include <iarc7_msgs/Float64Stamped.h>
 #include <ros/ros.h>
 
-void distributeMessages(iarc7_msgs::Nano nano_info, ros::Publisher& opticalflow_pub, ros::Publisher& rangefinder_pub, ros::Publisher& long_range_pub);
+void distributeMessages(iarc7_msgs::Nano nano_info, ros::Publisher& opticalflow_pub, ros::Publisher& rangefinder_pub, ros::Publisher& long_range_pub,
+                        ros::Publisher& battery_publisher);
 
 boost::function<void (const iarc7_msgs::Nano&)> callback;
 
@@ -23,9 +25,13 @@ int main(int argc, char* argv[]){
     ros::Publisher opticalflow_pub = 
         nh.advertise<iarc7_msgs::FlowVector>("flow_vector", 0); 
 
+    ros::Publisher battery_publisher = 
+        nh.advertise<iarc7_msgs::Float64Stamped>("motor_battery", 0);
+
     boost::function<void (const iarc7_msgs::Nano&)> callback = 
     [&] (const iarc7_msgs::Nano& nano_info){
-        distributeMessages(nano_info, opticalflow_pub, rangefinder_pub, long_range_pub);
+        distributeMessages(nano_info, opticalflow_pub, rangefinder_pub, long_range_pub,
+            battery_publisher);
     };
     // & just means "look at all the objects already declared and pull the ones you need"
     ros::Subscriber Nano_sub = nh.subscribe<iarc7_msgs::Nano>("nano_data",
@@ -40,7 +46,8 @@ int main(int argc, char* argv[]){
 void distributeMessages(iarc7_msgs::Nano nano_info, 
                         ros::Publisher& opticalflow_pub,
                         ros::Publisher& rangefinder_pub,
-                        ros::Publisher& long_range_pub){
+                        ros::Publisher& long_range_pub,
+                        ros::Publisher& battery_publisher){
 
     ros::Duration offsets;
 
@@ -48,6 +55,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     sensor_msgs::Range long_range_msg;
     sensor_msgs::Range short_range_msg;
     iarc7_msgs::FlowVector flow_msg;
+    iarc7_msgs::Float64Stamped battery_voltage;
 
     long_range_msg.range = nano_info.long_range;
     long_range_msg.min_range = 0.3;
@@ -75,9 +83,10 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     if(nano_info.short_range_offset > 0)
     {
 
-    rangefinder_pub.publish(short_range_msg);
+        rangefinder_pub.publish(short_range_msg);
 
     }
+    
     ros::Duration flow_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000));
 
     flow_msg.header.stamp = (nano_info.msg_received + flow_offset);
@@ -91,6 +100,14 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     {
         ROS_WARN("Nano_transcriber received messages out of order");
     }
+
+    ros::Duration battery_offset = ros::Duration().fromNSec((int64_t)(nano_info.battery_offset * 1000));
+
+    battery_voltage.data = nano_info.battery_voltage;
+    battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
+    battery_publisher.publish(battery_voltage);
+
+    ROS_WARN("%f, %f, %f, %f\n",long_range_msg.header.stamp.toSec(),short_range_msg.header.stamp.toSec(), flow_msg.header.stamp.toSec(), battery_voltage.header.stamp.toSec());
 
     return;
 
