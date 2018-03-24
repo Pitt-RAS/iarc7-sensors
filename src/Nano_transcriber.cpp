@@ -108,11 +108,19 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
 
     ros::Duration battery_offset = ros::Duration().fromNSec((int64_t)(nano_info.battery_offset * 1000));
 
+<<<<<<< HEAD
     battery_voltage.data = nano_info.battery_voltage;// * 11.53 / 10.50;
     battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
     battery_publisher.publish(battery_voltage);
 
     //ROS_WARN("%f, %f, %f, %f\n",long_range_msg.header.stamp.toSec(),short_range_msg.header.stamp.toSec(), flow_msg.header.stamp.toSec(), battery_voltage.header.stamp.toSec());
+=======
+    battery_voltage.data = nano_info.battery_voltage;
+    battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
+    battery_publisher.publish(battery_voltage);
+
+    ROS_WARN("%f, %f, %f, %f\n",long_range_msg.header.stamp.toSec(),short_range_msg.header.stamp.toSec(), flow_msg.header.stamp.toSec(), battery_voltage.header.stamp.toSec());
+>>>>>>> b38f448... Added battery publisher
 
     return;
 
