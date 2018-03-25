@@ -41,10 +41,14 @@ private:
     bool FlowTransformer::updateFilteredPosition(const ros::Time& time, const ros::Duration& timeout);
 
 
-    void OpticalFlowEstimator::getYPR(const tf2::Quaternion& orientation,
+    void FlowTransformer::getYPR(const tf2::Quaternion& orientation,
                                   double& y,
                                   double& p,
                                   double& r);
+
+    void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector)
+
+
 
     ////////////////////////
     // INSTANCE VARIABLES //
