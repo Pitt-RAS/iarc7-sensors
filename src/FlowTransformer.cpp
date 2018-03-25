@@ -1,6 +1,8 @@
-#include <iarc7_sensors/OpticalFlowEstimator.hpp>
+#include <iarc7_sensors/FlowTransformer.hpp>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <iarc7_msgs/FlowVector.h>
 #include <ros/ros.h>
@@ -9,17 +11,49 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <iarc7_msgs/OrientationAnglesStamped.h>
+#include <ros_utils/SafeTransformWrapper.hpp>
 
 // Thank you, Aaron
+
+void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
+                          iarc7_sensors::FlowTransformerSettings& settings)
+{
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/fov",
+        settings.fov));
+
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/min_estimation_altitude",
+        settings.min_estimation_altitude));
+
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/camera_vertical_threshold",
+        settings.camera_vertical_threshold));
+
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/tf_timeout",
+        settings.tf_timeout));
+
+}
+
+
+
 
 int main(int argc, char* argv[]){
 
     ros::init(argc, argv, "Optical_flow_estimator");
     ros::NodeHandle nh;
+    ros::NodeHandle private_nh("~");
+
+    iarc7_sensors::FlowTransformerSettings flow_settings;
+    getFlowTransformerSettings(private_nh, flow_settings);
+
 
     // process will go - subsriber gets message with flow vectors
-    // calls updateFilteredPosition to get current orientation and altitude
-    // Subscriber then calls estimateVelocityFromFlowVector 
+    // calls updateVelocity to get current orientation and altitude
+    // updateVelocity performs basic checks, gets current position.velocity 
+    // from other topics
+    // Finally, call estimateVelocity, which actually does math on rotation/flow vectors
     // Gets twist msg, checks for infinity, and then publishes
 
     boost::function<void (const iarc7_msgs::FlowVector&)> callback = 
@@ -137,8 +171,6 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 return twist;
 
 }
-
-void FlowTransformer::getFocalLength()
 
 void FlowTransformer::getYPR(const tf2::Quaternion& orientation,
                                   double& y,

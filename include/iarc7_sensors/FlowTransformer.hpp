@@ -7,18 +7,15 @@
 
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <ros_utils/SafeTransformWrapper.hpp>
 
-namespace iarc7_vision {
+namespace iarc7_sensors {
 
-struct FlowTransformerEstimatorSettings {
+struct FlowTransformerSettings {
     double fov; // 0.73 rad
     double min_estimation_altitude; // Future reference - this is 80 mm - some transform tree value
-    double target_size;
     double camera_vertical_threshold; //
-    //int win_size;
-    double variance;
-    double variance_scale;
+    //double variance;
+    //double variance_scale;
     double tf_timeout;
 };
 
@@ -28,7 +25,15 @@ class FlowTransformer {
 
 public:
 
+    //////////////////
+    // CONSTRUCTORS //
+    //////////////////
 
+    FlowTransformer(
+    const FlowTransformerSettings& flow_transformer_settings);
+
+
+    void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector)
 
 private:
 
@@ -46,7 +51,7 @@ private:
                                   double& p,
                                   double& r);
 
-    void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector)
+
 
 
 
@@ -65,7 +70,7 @@ private:
     ros::Time last_message_time_;
 
 
+    }   
+
 }
-
-
 #endif // include guard
