@@ -58,7 +58,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     iarc7_msgs::Float64Stamped battery_voltage;
 
     long_range_msg.range = nano_info.long_range;
-    long_range_msg.min_range = 0.3;
+    long_range_msg.min_range = 0.5;
     long_range_msg.max_range = 10;
     long_range_msg.header.stamp = nano_info.msg_received;
     long_range_msg.radiation_type = sensor_msgs::Range::INFRARED;
@@ -103,11 +103,11 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
 
     ros::Duration battery_offset = ros::Duration().fromNSec((int64_t)(nano_info.battery_offset * 1000));
 
-    battery_voltage.data = nano_info.battery_voltage;
+    battery_voltage.data = nano_info.battery_voltage * 11.53 / 10.50;
     battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
     battery_publisher.publish(battery_voltage);
 
-    ROS_WARN("%f, %f, %f, %f\n",long_range_msg.header.stamp.toSec(),short_range_msg.header.stamp.toSec(), flow_msg.header.stamp.toSec(), battery_voltage.header.stamp.toSec());
+    //ROS_WARN("%f, %f, %f, %f\n",long_range_msg.header.stamp.toSec(),short_range_msg.header.stamp.toSec(), flow_msg.header.stamp.toSec(), battery_voltage.header.stamp.toSec());
 
     return;
 
