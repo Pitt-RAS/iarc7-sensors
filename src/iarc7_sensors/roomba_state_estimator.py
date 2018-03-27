@@ -7,6 +7,7 @@ Roomba State Estimator: estimates state of all visible roombas
 import rospy
 import math
 import threading
+import numpy as np
 
 from nav_msgs.msg import Odometry
 
@@ -22,21 +23,21 @@ class RoombaStates(object):
 
 class Roomba(object):
     def __init__(self, roomba_id):
+        self._roomba_id = roomba_id
+
         # odom estimating
         self._last_time = None
         self._last_odom = None
-        self._last_x_pos = []
-        self._last_y_pos = []
-        self._max_average_span = 5
+        self._max_expected_roomba_vel = rospy.get_param('~roomba_expected_vel')
+
+        self._expected_moving_pose_diff = self._max_expected_roomba_vel * .03
 
         # state estimating
         self._state = RoombaStates.UNKNOWN
-        self._roomba_id = roomba_id
         self._speed_indicates_turning = False
 
         self._turning_detected_speed = rospy.get_param('~turning_detected_speed')
         self._moving_detected_speed = rospy.get_param('~moving_detected_speed')
-        self._max_expected_roomba_vel = rospy.get_param('~roomba_expected_vel')
 
     def update_state(self):
         roomba_x_velocity = self._last_odom.twist.twist.linear.x
@@ -60,50 +61,40 @@ class Roomba(object):
         if self._last_time is None:
             self._last_time = curr_pos.header.stamp
             self._last_odom = curr_pos
-            self._last_x_pos.append(curr_pos.pose.pose.position.x)
-            self._last_y_pos.append(curr_pos.pose.pose.position.y)
-
             return curr_pos
         else:
-            time_delta = (curr_pos.header.stamp-self._last_time).to_sec()
-
-            if time_delta <= 0:
-                raise RuntimeError('invalid time delta {} in update_odom for roomba_state_estimator'.format(time_delta))
-
             new_x = curr_pos.pose.pose.position.x
             new_y = curr_pos.pose.pose.position.y
 
-            last_x = sum(self._last_x_pos)/len(self._last_x_pos)
-            last_y = sum(self._last_y_pos)/len(self._last_y_pos)
+            last_x = self._last_odom.pose.pose.position.x
+            last_y = self._last_odom.pose.pose.position.y
 
-            x_vel = (new_x - last_x)/time_delta
-            y_vel = (new_y - last_y)/time_delta
+            s = np.array([(new_x-last_x), (new_y-last_y)])
 
-            # caps velocity to max expected velocity
-            vel = math.sqrt(x_vel**2 + y_vel**2)
+            x_var = self._last_odom.pose.covariance[0]
+            y_var = self._last_odom.pose.covariance[7]
 
-            if vel > self._max_expected_roomba_vel:
-                rospy.logerr('Calculated roomba velocity {} above expected velocity'.format(vel))
-                rospy.logerr('TIME DELTA: {}'.format(time_delta))
-                rospy.logerr('ROOMBA ID: ' + self._roomba_id)
+            # these 2 values should be equal
+            xy_var = self._last_odom.pose.covariance[1]
+            yx_var = self._last_odom.pose.covariance[6]
 
-                rospy.logerr('LAST X POSE: {}'.format(last_x))
-                rospy.logerr('CURR X POSE: {}'.format(new_x))
-                rospy.logerr('CALC X VEL: {}'.format(x_vel))
+            sigma = np.array([[x_var, xy_var],[yx_var, y_var]])
 
-                rospy.logerr('LAST Y POSE: {}'.format(last_y))
-                rospy.logerr('CURR Y POSE: {}'.format(new_y))
-                rospy.logerr('CALC Y VEL: {}'.format(y_vel))
+            sigma_inv = np.linalg.inv(sigma)
 
-                x_vel = x_vel * (self._max_expected_roomba_vel/vel)
-                y_vel = y_vel * (self._max_expected_roomba_vel/vel)
+            s_T = np.transpose(s)
 
-            if len(self._last_x_pos) < self._max_average_span:
-                self._last_x_pos.append(new_x)
-                self._last_y_pos.append(new_y)
-            else:
-                self._last_x_pos = self._last_x_pos[1:] + [new_x]
-                self._last_y_pos = self._last_y_pos[1:] + [new_y]
+            result = s_T.dot(sigma_inv).dot(s)
+
+            rospy.logerr(self._roomba_id)
+            rospy.logerr(str(result))
+
+            if result > 10: 
+                x_vel = .3
+                y_vel = .3
+            else: 
+                x_vel = 0
+                y_vel = 0
 
             msg = Odometry()
             msg.child_frame_id = self._roomba_id
