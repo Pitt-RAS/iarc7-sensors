@@ -1,12 +1,19 @@
-#include <iarc7_sensors/FlowTransformer.hpp>
+#include "iarc7_sensors/FlowTransformer.hpp"
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <iarc7_msgs/FlowVector.h>
+#include <math.h>
 #include <ros/ros.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #include <Eigen/Geometry>
+#pragma GCC diagnostic pop
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
@@ -27,16 +34,26 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
         settings.min_estimation_altitude));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/camera_vertical_threshold",
-        settings.camera_vertical_threshold));
+        "flow_transformer/vertical_threshold",
+        settings.vertical_threshold));
 
     ROS_ASSERT(private_nh.getParam(
         "flow_transformer/tf_timeout",
         settings.tf_timeout));
 
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/pix_width",
+        settings.pix_width));
+
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/variance",
+        settings.pix_width));
+
+    ROS_ASSERT(private_nh.getParam(
+        "flow_transformer/variance_scale",
+        settings.pix_width));
+
 }
-
-
 
 
 int main(int argc, char* argv[]){
@@ -45,9 +62,10 @@ int main(int argc, char* argv[]){
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
 
-    iarc7_sensors::FlowTransformerSettings flow_settings;
-    getFlowTransformerSettings(private_nh, flow_settings);
+    iarc7_sensors::FlowTransformerSettings flow_transformer_settings;
+    getFlowTransformerSettings(private_nh, flow_transformer_settings);
 
+    iarc7_sensors::FlowTransformer flow_transformer(flow_transformer_settings, nh);
 
     // process will go - subsriber gets message with flow vectors
     // calls updateVelocity to get current orientation and altitude
@@ -58,21 +76,35 @@ int main(int argc, char* argv[]){
 
     boost::function<void (const iarc7_msgs::FlowVector&)> callback = 
     [&] (const iarc7_msgs::FlowVector& flow_vector){
-        updateVelocity(flow_vector);
+        flow_transformer.updateVelocity(flow_vector);
     };
 
-
-    // & just means "look at all the objects already declared and pull the ones you need"
     ros::Subscriber Flow_vector_sub = nh.subscribe<iarc7_msgs::FlowVector>("flow_vector",
                                  0,
                                  callback);
 
+    ros::spin();
+
 }
 
 
+namespace iarc7_sensors{
 
-geometry_msgs::TwistWithCovarianceStamped
-FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time){
+FlowTransformer::FlowTransformer(
+                            const FlowTransformerSettings& flow_transformer_settings,
+                            ros::NodeHandle nh)
+                            :flow_transformer_settings(flow_transformer_settings),
+                            twist_pub_(
+              nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+              "twist", 10))
+{
+    return;
+}
+
+
+geometry_msgs::TwistWithCovarianceStamped 
+FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
+{
 
    // Get the pitch and roll of the camera in euler angles
     // NOTE: CAMERA FRAME CONVENTIONS ARE DIFFERENT, SEE REP103
@@ -108,26 +140,66 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Focal length gives distance from camera to image plane in pixels, so
     // dividing distance to plane by this number gives the multiplier we want
     // dtp * tan 42 /15 px
-    double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings_.fov)
-                                    / flow_transformer_settings_.pix_width;
+    double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov)
+                                    / flow_transformer_settings.pix_width;
 
 
 
-    estimatedXVel = current_meters_per_px * deltaX / dt;
-    estimatedYVel = current_meters_per_px * deltaY / dt;
+    float estimatedXVel = current_meters_per_px * deltaX / dt;
+    float estimatedYVel = current_meters_per_px * deltaY / dt;
+
     
+    double dp;
+    double dr;
 
-    // For now, copy pasting all of Aaron's covariance stuff so that the rest of the 
-    // flight stack still works
+    // These two if statements make sure that dp and dr are the shortest change
+    // in angle that would produce the new observed orientation
+    //
+    // i.e. a change from 0.1rad to (2pi-0.1)rad should result in a delta of
+    // -0.2rad, not (2pi-0.2)rad
+    if (last_pitch > M_PI/2 && pitch < -M_PI/2) {
+        dp = (pitch + 2*M_PI - last_pitch);
+    } else if (last_pitch < -M_PI/2 && pitch > M_PI/2) {
+        dp = (pitch - last_pitch - 2*M_PI);
+    } else {
+        dp = (pitch - last_pitch);
+    }
+
+    if (last_roll > M_PI/2 && roll < -M_PI/2) {
+        dr = (roll + 2*M_PI - last_roll);
+    } else if (last_roll < -M_PI/2 && roll > M_PI/2) {
+        dr = (roll - last_roll - 2*M_PI);
+    } else {
+        dr = (roll - last_roll);
+    }
+
+    double dpitch_dt = dp / dt;
+    double droll_dt = dr / dt;
+
+
+    float correctedXVel = distance_to_plane
+                     * -dpitch_dt
+                     / std::cos(pitch);
+    float correctedYVel = distance_to_plane
+                     * -droll_dt
+                     / -std::cos(roll);
+
+    // Actual velocity in level camera frame (i.e. camera frame if our pitch
+    // and roll were zero)
+    Eigen::Vector3d corrected_vel(
+        estimatedXVel - correctedXVel,
+        estimatedYVel - correctedYVel,
+        0.0);
+
 
     // Calculate covariance
     Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
-    covariance(0, 0) = std::pow(flow_transformer_settings_.variance_scale
+    covariance(0, 0) = std::pow(flow_transformer_settings.variance_scale
                               * dpitch_dt, 2.0)
-                      + flow_transformer_settings_.variance;
-    covariance(1, 1) = std::pow(flow_transformer_settings_.variance_scale
+                      + flow_transformer_settings.variance;
+    covariance(1, 1) = std::pow(flow_transformer_settings.variance_scale
                               * droll_dt, 2.0)
-                      + flow_transformer_settings_.variance;
+                      + flow_transformer_settings.variance;
 
     // Rotation matrix from level camera frame to level_quad
     Eigen::Matrix3d rotation_matrix;
@@ -168,9 +240,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     twist.twist.covariance[6] = level_quad_covariance(1, 0);
     twist.twist.covariance[7] = level_quad_covariance(1, 1);
 
-return twist;
+    return twist;
 
 }
+
 
 void FlowTransformer::getYPR(const tf2::Quaternion& orientation,
                                   double& y,
@@ -191,10 +264,11 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
     // make sure our current position is up to date
     if (!updateFilteredPosition(
                 flow_vector.header.stamp,
-                ros::Duration(flow_transformer_settings_.tf_timeout))) {
+                ros::Duration(flow_transformer_settings.tf_timeout))) {
         ROS_ERROR("Unable to update position for optical flow");
 
         // Add something to tell this not to publish
+        // But is that necessary if we return here?
 
         //have_valid_last_image_ = false;
         return;
@@ -234,17 +308,18 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
 
 bool FlowTransformer::canEstimateFlow()
 {
-    if (current_altitude_ < flow_transformer_settings_.min_estimation_altitude) {
+    if (current_altitude_ < flow_transformer_settings.min_estimation_altitude) {
         ROS_WARN_THROTTLE(2.0,
                           "Optical flow: height (%f) is below min processing height (%f)",
                           current_altitude_,
-                          flow_transformer_settings_.min_estimation_altitude);
+                          flow_transformer_settings.min_estimation_altitude);
         return false;
-
+    }
     else{
 
         return true;
     }
+
 }
 
 
@@ -290,4 +365,6 @@ bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
 
     current_camera_to_level_quad_tf_ = camera_to_level_quad_tf_stamped;
     return true;
+}
+
 }

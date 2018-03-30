@@ -1,0 +1,10 @@
+<launch>
+
+     <node name="Flow_transformer" pkg="iarc7_sensors"
+     type="iarc7_flow_transformer">
+      	<rosparam command="load"
+      	file="$(find iarc7_sensors)/param/flow_transformer.yaml" />
+
+     </node>
+
+</launch>

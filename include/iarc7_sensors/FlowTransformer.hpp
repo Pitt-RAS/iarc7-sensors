@@ -4,19 +4,24 @@
 
 
 #include <ros/ros.h>
-
+#include <ros_utils/SafeTransformWrapper.hpp>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
+
+#include <iarc7_msgs/FlowVector.h>
 
 namespace iarc7_sensors {
 
 struct FlowTransformerSettings {
     double fov; // 0.73 rad
     double min_estimation_altitude; // Future reference - this is 80 mm - some transform tree value
-    double camera_vertical_threshold; //
-    //double variance;
-    //double variance_scale;
+    double vertical_threshold; //
+    double variance;
+    double variance_scale;
     double tf_timeout;
+    int pix_width;
+
 };
 
 // variables - current / last orientation, target_size, current_altitude
@@ -30,27 +35,29 @@ public:
     //////////////////
 
     FlowTransformer(
-    const FlowTransformerSettings& flow_transformer_settings);
+    const FlowTransformerSettings& flow_transformer_settings,
+    ros::NodeHandle nh);
 
 
-    void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector)
+    void updateVelocity(iarc7_msgs::FlowVector);
 
 private:
 
 
 
     geometry_msgs::TwistWithCovarianceStamped
-    FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time);
+    estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time);
 
 
-    bool FlowTransformer::updateFilteredPosition(const ros::Time& time, const ros::Duration& timeout);
+    bool updateFilteredPosition(const ros::Time& time, const ros::Duration& timeout);
 
 
-    void FlowTransformer::getYPR(const tf2::Quaternion& orientation,
+    void getYPR(const tf2::Quaternion& orientation,
                                   double& y,
                                   double& p,
                                   double& r);
 
+    bool canEstimateFlow();
 
 
 
@@ -65,12 +72,18 @@ private:
     tf2::Quaternion last_orientation_;
     geometry_msgs::TransformStamped current_camera_to_level_quad_tf_;
     geometry_msgs::TransformStamped last_camera_to_level_quad_tf_;
+    const ros_utils::SafeTransformWrapper transform_wrapper_;
+
+    iarc7_sensors::FlowTransformerSettings flow_transformer_settings;
 
     /// Timestamp from last message received
     ros::Time last_message_time_;
 
+    // Publisher/s
+     const ros::Publisher twist_pub_;
 
-    }   
+
+    };
 
 }
 #endif // include guard

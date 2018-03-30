@@ -13,8 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   iarc7_safety
   message_filters
   roscpp
-  tf
-  tf2
+  ros_utils
   tf2_geometry_msgs
   tf2_ros
 )
@@ -172,6 +171,17 @@ target_link_libraries(iarc7_nano_transcriber
    ${catkin_LIBRARIES}
 )
 
+
+add_executable(iarc7_flow_transformer
+   src/FlowTransformer.cpp
+)
+ add_dependencies(iarc7_sensors_altimeter_from_subscription_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(iarc7_flow_transformer
+   ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##

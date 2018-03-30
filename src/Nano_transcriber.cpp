@@ -38,6 +38,11 @@ int main(int argc, char* argv[]){
                                  0,
                                  callback);
 
+    // iarc7_msgs::FlowVector flow_msg;
+    // flow_msg.deltaX = 5;
+    // flow_msg.deltaY = 5;
+    // opticalflow_pub.publish(flow_msg);
+
     ros::spin();
 
 }
