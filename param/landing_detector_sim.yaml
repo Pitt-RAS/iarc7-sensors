@@ -11,10 +11,10 @@ switch_update_lag_tolerance: 10
 switch_startup_timeout: 20
 
 # Landing detected height threshold
-landing_detected_height: 0.27
+landing_detected_height: 0.04
 
 # Takeoff detected height threshold
-takeoff_detected_height: 0.32
+takeoff_detected_height: 0.09
 
 # Override switches on takeoff height theshold
 takeoff_detected_override_height: 0.45

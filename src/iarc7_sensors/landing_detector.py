@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 import sys
 import rospy
+import tf2_geometry_msgs
+import tf2_ros
 
 from iarc7_msgs.msg import BoolStamped
 from iarc7_msgs.msg import LandingGearContactsStamped
-from geometry_msgs.msg import TwistWithCovarianceStamped
-from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PointStamped, TwistWithCovarianceStamped
 
 from iarc7_safety.SafetyClient import SafetyClient
 
@@ -13,21 +14,18 @@ def switch_callback(msg):
     global last_switch_message
     last_switch_message = msg
 
-def odom_callback(msg):
-    global last_height
-    last_height = msg.pose.pose.position.z
-
 last_switch_message = None
-last_height = 0.0
 height_indicates_landed = False
 
 if __name__ == '__main__':
     rospy.init_node('landing_detector')
     absolute_velocity_pub = rospy.Publisher('absolute_vel', TwistWithCovarianceStamped, queue_size=0)
     landing_detected_pub = rospy.Publisher('landing_detected', BoolStamped, queue_size=0)
-    rospy.Subscriber('odometry/filtered', Odometry, odom_callback)
 
     rate = rospy.Rate(rospy.get_param('~update_rate'))
+
+    tf_buffer = tf2_ros.Buffer()
+    tf_listener = tf2_ros.TransformListener(tf_buffer)
 
     landing_detected_height = rospy.get_param('~landing_detected_height')
     takeoff_detected_height = rospy.get_param('~takeoff_detected_height')
@@ -57,6 +55,13 @@ if __name__ == '__main__':
                 raise rospy.exceptions.ROSInterruptException('No message before shutdown')
             rate.sleep()
 
+    # Wait for valid transform
+    while not rospy.is_shutdown() and not tf_buffer.can_transform(
+            'map',
+            'base_footprint',
+            rospy.Time(0)):
+        pass
+
     safety_client = SafetyClient('landing_detector')
     assert(safety_client.form_bond())
 
@@ -73,6 +78,14 @@ if __name__ == '__main__':
                                       -switch_update_lag_tolerance))):
                 rospy.logwarn_throttle(1.0,
                     'Landing Detector is not receiving switch messages fast enough')
+
+        # If this fails something is seriously wrong, so we're ok with crashing
+        last_tf = tf_buffer.lookup_transform('map',
+                                             'base_footprint',
+                                             rospy.Time(0))
+        point = PointStamped()
+        point = tf2_geometry_msgs.do_transform_point(point, last_tf)
+        last_height = point.point.z
 
         if height_indicates_landed:
             height_indicates_landed = last_height < takeoff_detected_height

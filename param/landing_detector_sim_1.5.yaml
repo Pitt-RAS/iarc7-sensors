@@ -2,10 +2,10 @@
 update_rate: 100
 
 # Landing detected height threshold
-landing_detected_height: 0.15
+landing_detected_height: 0.08
 
 # Takeoff detected height threshold
-takeoff_detected_height: 0.20
+takeoff_detected_height: 0.13
 
 # Whether or not to use the switches
 use_switches: false
