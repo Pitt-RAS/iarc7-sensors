@@ -55,15 +55,20 @@ if __name__ == '__main__':
                 raise rospy.exceptions.ROSInterruptException('No message before shutdown')
             rate.sleep()
 
+    safety_client = SafetyClient('landing_detector')
+    assert(safety_client.form_bond())
+
     # Wait for valid transform
     while not rospy.is_shutdown() and not tf_buffer.can_transform(
             'map',
             'base_footprint',
             rospy.Time(0)):
-        pass
-
-    safety_client = SafetyClient('landing_detector')
-    assert(safety_client.form_bond())
+        # Publish the ground state message assuming we are on the ground
+        state_msg = BoolStamped()
+        state_msg.header.stamp = rospy.Time.now()
+        state_msg.data = True
+        landing_detected_pub.publish(state_msg)
+        rate.sleep()
 
     while not rospy.is_shutdown():
         if (safety_client.is_fatal_active()
