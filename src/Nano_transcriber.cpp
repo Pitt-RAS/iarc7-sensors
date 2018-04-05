@@ -108,7 +108,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
 
     ros::Duration battery_offset = ros::Duration().fromNSec((int64_t)(nano_info.battery_offset * 1000));
 
-    battery_voltage.data = nano_info.battery_voltage * 11.53 / 10.50;
+    battery_voltage.data = nano_info.battery_voltage;// * 11.53 / 10.50;
     battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
     battery_publisher.publish(battery_voltage);
 
