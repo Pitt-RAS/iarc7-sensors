@@ -20,7 +20,6 @@
 #include <iarc7_msgs/OrientationAnglesStamped.h>
 #include <ros_utils/SafeTransformWrapper.hpp>
 
-// Thank you, Aaron
 
 void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
                           iarc7_sensors::FlowTransformerSettings& settings)
@@ -91,12 +90,12 @@ int main(int argc, char* argv[]){
 namespace iarc7_sensors{
 
 FlowTransformer::FlowTransformer(
-                            const FlowTransformerSettings& flow_transformer_settings,
-                            ros::NodeHandle nh)
-                            :flow_transformer_settings(flow_transformer_settings),
-                            twist_pub_(
-              nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
-              "twist", 10))
+	const FlowTransformerSettings& flow_transformer_settings,
+             	ros::NodeHandle nh)
+             	:flow_transformer_settings(flow_transformer_settings),
+            	twist_pub_(
+             	nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+             	"twist", 10))
 {
     return;
 }
@@ -106,7 +105,7 @@ geometry_msgs::TwistWithCovarianceStamped
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
 
-   // Get the pitch and roll of the camera in euler angles
+    // Get the pitch and roll of the camera in euler angles
     // NOTE: CAMERA FRAME CONVENTIONS ARE DIFFERENT, SEE REP103
     // http://www.ros.org/reps/rep-0103.html
     double yaw, pitch, roll;
@@ -324,7 +323,7 @@ bool FlowTransformer::canEstimateFlow()
 
 
 bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
-                                                  const ros::Duration& timeout)
+                                             const ros::Duration& timeout)
 {
     geometry_msgs::TransformStamped filtered_position_transform_stamped;
     geometry_msgs::TransformStamped camera_to_level_quad_tf_stamped;
