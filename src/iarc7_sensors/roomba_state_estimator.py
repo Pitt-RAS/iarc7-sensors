@@ -12,7 +12,7 @@ import numpy as np
 from nav_msgs.msg import Odometry
 
 from iarc7_safety.SafetyClient import SafetyClient
-from iarc7_msgs.msg import (OdometryArray, 
+from iarc7_msgs.msg import (RoombaDetectionFrame, 
                             RoombaStateStamped, 
                             RoombaStateStampedArray)
 
@@ -29,8 +29,6 @@ class Roomba(object):
         self._last_time = None
         self._last_odom = None
         self._max_expected_roomba_vel = rospy.get_param('~roomba_expected_vel')
-
-        self._expected_moving_pose_diff = self._max_expected_roomba_vel * .03
 
         # state estimating
         self._state = RoombaStates.UNKNOWN
@@ -86,13 +84,13 @@ class Roomba(object):
 
             result = s_T.dot(sigma_inv).dot(s)
 
-            rospy.logerr(self._roomba_id)
-            rospy.logerr(str(result))
+            #rospy.logerr(self._roomba_id)
+            #rospy.logerr(str(result))
 
-            if result > 10: 
+            if result > 10:
                 x_vel = .3
                 y_vel = .3
-            else: 
+            else:
                 x_vel = 0
                 y_vel = 0
 
@@ -124,45 +122,49 @@ class RoombaStateEstimator(object):
         self._roomba_dict = {}
 
         self._state_pub = rospy.Publisher('roomba_states', RoombaStateStampedArray, queue_size=0)
-        self._odom_pub = rospy.Publisher('roombas', OdometryArray, queue_size=0)
 
         self._lock = threading.Lock()
 
-        rospy.Subscriber('roomba_observations', OdometryArray, self._roomba_callback)
+        rospy.Subscriber('detected_roombas', RoombaDetectionFrame, self._roomba_callback)
 
         try:
             rospy.spin()
         except KeyboardInterrupt:
             rospy.loginfo("Shutting down roomba state estimator");
 
+    def _get_roomba(self, pose):
+        # roomba id is supposed to be something
+        roomba_id = 'roomba'
+
+        # check to see if we have seen this roomba yet
+        if not roomba_id in self._roomba_dict:
+            roomba = Roomba(roomba_id)
+            self._roomba_dict[roomba_id] = roomba
+        else:
+            roomba = self._roomba_dict.get(roomba_id)
+        return roomba
+
     def _roomba_callback(self, msg):
         with self._lock:
-            roomba_odoms_msg = OdometryArray()
-            roomba_states_msg = RoombaStateStampedArray()
+            roombas_msg = RoombaStateStampedArray()
+            for roomba_detection in msg.roombas:
+                roomba_pose = roomba_detection.pose
 
-            for roomba_pose in msg.data:
-                roomba_id = roomba_pose.child_frame_id
+                roomba = self._get_roomba(roomba_pose)
 
-                # check to see if we have seen this roomba yet
-                if not roomba_id in self._roomba_dict:
-                    roomba = Roomba(roomba_id)
-                    self._roomba_dict[roomba_id] = roomba
-                else:
-                    roomba = self._roomba_dict.get(roomba_id)
-
-                roomba_odoms_msg.data.append(roomba.update_odom(roomba_pose))
-
-                roomba.update_state()
                 state_msg = RoombaStateStamped()
                 state_msg.header.stamp = rospy.Time.now()
                 state_msg.roomba_id = roomba_id
+
+                state_msg.data = roomba.update_odom(roomba_pose)
+
+                roomba.update_state()
                 state_msg.moving_forward = roomba.is_moving_forward()
                 state_msg.turning = roomba.is_turning_around()
 
-                roomba_states_msg.roombas.append(state_msg)
+                roombas_msg.roombas.append(state_msg)
 
-            self._state_pub.publish(roomba_states_msg)
-            self._odom_pub.publish(roomba_odoms_msg)
+            self._state_pub.publish(roombas_msg)
 
 if __name__ == '__main__':
     RoombaStateEstimator()
