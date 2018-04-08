@@ -25,32 +25,32 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
                           iarc7_sensors::FlowTransformerSettings& settings)
 {
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/fov",
+        "/flow_transformer/fov",
         settings.fov));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/min_estimation_altitude",
+        "/flow_transformer/min_estimation_altitude",
         settings.min_estimation_altitude));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/vertical_threshold",
+        "/flow_transformer/vertical_threshold",
         settings.vertical_threshold));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/tf_timeout",
+        "/flow_transformer/tf_timeout",
         settings.tf_timeout));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/pix_width",
+        "/flow_transformer/pix_width",
         settings.pix_width));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/variance",
-        settings.pix_width));
+        "/flow_transformer/variance",
+        settings.variance));
 
     ROS_ASSERT(private_nh.getParam(
-        "flow_transformer/variance_scale",
-        settings.pix_width));
+        "/flow_transformer/variance_scale",
+        settings.variance_scale));
 
 }
 
@@ -90,12 +90,12 @@ int main(int argc, char* argv[]){
 namespace iarc7_sensors{
 
 FlowTransformer::FlowTransformer(
-	const FlowTransformerSettings& flow_transformer_settings,
-             	ros::NodeHandle nh)
-             	:flow_transformer_settings(flow_transformer_settings),
-            	twist_pub_(
-             	nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
-             	"twist", 10))
+    const FlowTransformerSettings& flow_transformer_settings,
+                ros::NodeHandle nh)
+                :flow_transformer_settings(flow_transformer_settings),
+                twist_pub_(
+                nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+                "twist", 10))
 {
     return;
 }
@@ -104,7 +104,10 @@ FlowTransformer::FlowTransformer(
 geometry_msgs::TwistWithCovarianceStamped 
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
+	
+    geometry_msgs::TwistWithCovarianceStamped twist;
 
+    ROS_ERROR("At beginning of estimate Velocity");
     // Get the pitch and roll of the camera in euler angles
     // NOTE: CAMERA FRAME CONVENTIONS ARE DIFFERENT, SEE REP103
     // http://www.ros.org/reps/rep-0103.html
@@ -116,7 +119,11 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     // Calculate time between last and current frame
     double dt = (time - last_message_time_).toSec();
+    
+    //ROS_ERROR("time is %f\n", time.toSec());
+    //ROS_ERROR("last time is %f\n", last_message_time_.toSec());
 
+    //ROS_ERROR("dt is %lf\n", dt);    
 
     // Distance from the camera to the ground plane, along the camera's +z axis
     //
@@ -139,6 +146,11 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Focal length gives distance from camera to image plane in pixels, so
     // dividing distance to plane by this number gives the multiplier we want
     // dtp * tan 42 /15 px
+
+    
+    //ROS_ERROR("distance to plane is %f\n", distance_to_plane);
+    //ROS_ERROR("tan computation is %f\n", std::tan(flow_transformer_settings.fov));
+
     double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov)
                                     / flow_transformer_settings.pix_width;
 
@@ -146,7 +158,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     float estimatedXVel = current_meters_per_px * deltaX / dt;
     float estimatedYVel = current_meters_per_px * deltaY / dt;
-
+    ROS_ERROR("estimatedX, %f- dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
     
     double dp;
     double dr;
@@ -189,8 +201,6 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         estimatedXVel - correctedXVel,
         estimatedYVel - correctedYVel,
         0.0);
-
-
     // Calculate covariance
     Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
     covariance(0, 0) = std::pow(flow_transformer_settings.variance_scale
@@ -227,7 +237,6 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     corrected_level_quad_vel.y() -= camera_relative_vel_y;
 
     // Fill out the twist
-    geometry_msgs::TwistWithCovarianceStamped twist;
     twist.header.stamp = time;
     twist.header.frame_id = "level_quad";
     twist.twist.twist.linear.x = estimatedYVel;
@@ -287,6 +296,10 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
         flow_vector.deltaY,
         flow_vector.header.stamp);
 
+    ROS_INFO("Before checking whether we have some infinite numbers");
+
+    last_message_time_ = flow_vector.header.stamp;
+
     if (!std::isfinite(velocity.twist.twist.linear.x)
      || !std::isfinite(velocity.twist.twist.linear.y)
      || !std::isfinite(velocity.twist.covariance[0])    // variance of x
@@ -300,6 +313,7 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
         twist_pub_.publish(velocity);
 
     }
+    last_message_time_ = flow_vector.header.stamp;
 
 }
 
@@ -320,7 +334,6 @@ bool FlowTransformer::canEstimateFlow()
     }
 
 }
-
 
 bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
                                              const ros::Duration& timeout)
@@ -365,5 +378,5 @@ bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
     current_camera_to_level_quad_tf_ = camera_to_level_quad_tf_stamped;
     return true;
 }
-
 }
+

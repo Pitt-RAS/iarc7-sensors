@@ -1,24 +1,23 @@
 # Settings for the flow transformer 
-flow_transformer:
 
-  #fov of the camera (in radians)
-  fov: 0.733
+#fov of the camera (in radians)
+fov: 0.733
 
-  # Minimum altitude to run the optical flow sensor
-  min_estimation_altitude: 0.08
+# Minimum altitude to run the optical flow sensor
+min_estimation_altitude: 0.08
 
-  # Timeout for updates from tf
-  tf_timeout: 1.0
+# Timeout for updates from tf
+tf_timeout: 1.0
 
-  # Number of pixels in x and y direction
-  pix_width: 30
+# Number of pixels in x and y direction
+pix_width: 30
 
-  # What to scale the variance on according to the rotation rate / probably needs to be changed
-  variance_scale: 0.19 # 0.3s/90deg
+# What to scale the variance on according to the rotation rate / probably needs to be changed
+variance_scale: 0.19 # 0.3s/90deg
 
-  # Min variance to send with velocity measurements
-  variance: 1.0
+# Min variance to send with velocity measurements
+variance: 1.0
 
-  #Min altitude to run optical flow
-  vertical_threshold : 0.8
+#Min altitude to run optical flow
+vertical_threshold : 0.8
   
