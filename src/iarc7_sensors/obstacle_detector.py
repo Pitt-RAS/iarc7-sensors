@@ -299,6 +299,7 @@ def process_scan(scan, tf_start, tf_end, settings):
     if not points.size:
         msg = ObstacleArray()
         msg.header.stamp = scan.header.stamp
+        msg.header.frame_id = 'map'
         obstacle_pub.publish(msg)
         rospy.loginfo('No valid points in laser scan, returning')
         return
@@ -321,6 +322,7 @@ def process_scan(scan, tf_start, tf_end, settings):
     # Estimate positions of clusters
     msg = ObstacleArray()
     msg.header.stamp = scan.header.stamp
+    msg.header.frame_id = 'map'
     marker_msg = MarkerArray()
 
     arena_center = np.array((settings['arena_center_x'],
