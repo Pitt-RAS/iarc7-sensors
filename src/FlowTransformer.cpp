@@ -52,6 +52,10 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
         "/flow_transformer/variance_scale",
         settings.variance_scale));
 
+    ROS_ASSERT(private_nh.getParam(
+        "/flow_transformer/debug_print",
+        settings.debug_print));
+
 }
 
 
@@ -120,10 +124,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Calculate time between last and current frame
     double dt = (time - last_message_time_).toSec();
     
-    //ROS_ERROR("time is %f\n", time.toSec());
-    //ROS_ERROR("last time is %f\n", last_message_time_.toSec());
+    ROS_ERROR("time is %f\n", time.toSec());
+    ROS_ERROR("last time is %f\n", last_message_time_.toSec());
 
-    //ROS_ERROR("dt is %lf\n", dt);    
+    ROS_ERROR("dt is %lf\n", dt);    
 
     // Distance from the camera to the ground plane, along the camera's +z axis
     //
@@ -133,11 +137,15 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // calculates the hypotenuse if the vertical leg has length
     // current_altitude_ and the horizontal leg has length
     // ((current_altitude_*tan(pitch))^2 + (current_altitude_*tan(roll))^2)^0.5
+    ROS_ERROR_STREAM("Current altitude before use: " << current_altitude_);
     double distance_to_plane = current_altitude_
                              * std::sqrt(1.0
                             + std::pow(std::tan(pitch), 2.0)
                             + std::pow(std::tan(roll), 2.0));
 
+    ROS_ERROR("distance_to_plane is %lf\n", distance_to_plane);
+    
+    
     // Multiplier that converts measurements in pixels to measurements in
     // meters in the plane parallel to the camera's xy plane and going through
     // the point Pg, where Pg is intersection between the camera's +z axis and
@@ -147,18 +155,19 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // dividing distance to plane by this number gives the multiplier we want
     // dtp * tan 42 /15 px
 
-    
-    //ROS_ERROR("distance to plane is %f\n", distance_to_plane);
-    //ROS_ERROR("tan computation is %f\n", std::tan(flow_transformer_settings.fov));
-
     double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov)
                                     / flow_transformer_settings.pix_width;
 
 
 
-    float estimatedXVel = current_meters_per_px * deltaX / dt;
-    float estimatedYVel = current_meters_per_px * deltaY / dt;
-    ROS_ERROR("estimatedX, %f- dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // These velocities are flipped, but it really should be implemented properly in the 
+    // transform tree. Definitely fix this later.
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    float estimatedXVel = -current_meters_per_px * deltaX / dt;
+    float estimatedYVel = -current_meters_per_px * deltaY / dt;
+    ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
     
     double dp;
     double dr;
@@ -183,9 +192,12 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     } else {
         dr = (roll - last_roll);
     }
+    ROS_ERROR_STREAM("dp and dr are " << dp << " "  << dr);
+    
 
     double dpitch_dt = dp / dt;
     double droll_dt = dr / dt;
+    ROS_ERROR_STREAM("dp/dt is "<< dpitch_dt << "and dr/dt is " << droll_dt);
 
 
     float correctedXVel = distance_to_plane
@@ -194,7 +206,9 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     float correctedYVel = distance_to_plane
                      * -droll_dt
                      / -std::cos(roll);
+    ROS_ERROR_STREAM("correctedXVel is" << correctedXVel << "and correctedYVel is" << correctedYVel);
 
+    
     // Actual velocity in level camera frame (i.e. camera frame if our pitch
     // and roll were zero)
     Eigen::Vector3d corrected_vel(
@@ -239,14 +253,25 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Fill out the twist
     twist.header.stamp = time;
     twist.header.frame_id = "level_quad";
-    twist.twist.twist.linear.x = estimatedYVel;
-    twist.twist.twist.linear.y = estimatedXVel;
+    twist.twist.twist.linear.x = corrected_level_quad_vel.x();
+    twist.twist.twist.linear.y = corrected_level_quad_vel.y();
     twist.twist.twist.linear.z = 0.0;
 
     twist.twist.covariance[0] = level_quad_covariance(0, 0);
     twist.twist.covariance[1] = level_quad_covariance(0, 1);
     twist.twist.covariance[6] = level_quad_covariance(1, 0);
     twist.twist.covariance[7] = level_quad_covariance(1, 1);
+
+    if(flow_transformer_settings.debug_print)
+    {
+        ROS_ERROR_STREAM("Level quad velocity" << level_quad_vel);
+        ROS_ERROR_STREAM("Measured current position" << curr_pos);
+        ROS_ERROR_STREAM("Measured last position" << last_pos);
+        ROS_ERROR_STREAM("camera relative x velocity" << camera_relative_vel_x);
+        ROS_ERROR_STREAM("camera relative y velocity" << camera_relative_vel_y);
+        ROS_ERROR_STREAM("corrected level quad velocity" << corrected_level_quad_vel);
+        ROS_ERROR_STREAM("Twist measurements" << twist.twist);
+    }
 
     return twist;
 
@@ -314,7 +339,8 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
 
     }
     last_message_time_ = flow_vector.header.stamp;
-
+    last_orientation_ = current_orientation_;
+    last_camera_to_level_quad_tf_ = current_camera_to_level_quad_tf_;
 }
 
 
@@ -346,7 +372,7 @@ bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
     bool success = transform_wrapper_.getTransformAtTime(
             filtered_position_transform_stamped,
             "map",
-            "pmw3901_optical_flow",
+            "pmw3901_optical_flow_optical",
             time,
             timeout);
 
@@ -358,7 +384,7 @@ bool FlowTransformer::updateFilteredPosition(const ros::Time& time,
     success = transform_wrapper_.getTransformAtTime(
             camera_to_level_quad_tf_stamped,
             "level_quad",
-            "pmw3901_optical_flow",
+            "pmw3901_optical_flow_optical",
             time,
             timeout);
 

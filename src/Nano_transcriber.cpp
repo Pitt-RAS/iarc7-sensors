@@ -2,12 +2,18 @@
 #include <iarc7_msgs/Nano.h>
 #include <iarc7_msgs/FlowVector.h>
 #include <iarc7_msgs/Float64Stamped.h>
+#include <iarc7_msgs/Float64ArrayStamped.h>
+#include <iarc7_msgs/ESCCommand.h>
 #include <ros/ros.h>
 
 void distributeMessages(iarc7_msgs::Nano nano_info, ros::Publisher& opticalflow_pub, ros::Publisher& rangefinder_pub, ros::Publisher& long_range_pub,
                         ros::Publisher& battery_publisher);
 
+void sendESCCommand(iarc7_msgs::Float64ArrayStamped esc_cmnds, ros::Publisher& esc_cmd_pub);
+
 boost::function<void (const iarc7_msgs::Nano&)> callback;
+
+boost::function<void (const iarc7_msgs::Float64ArrayStamped)> esc_callback;
 
 int main(int argc, char* argv[]){
     
@@ -28,15 +34,27 @@ int main(int argc, char* argv[]){
     ros::Publisher battery_publisher = 
         nh.advertise<iarc7_msgs::Float64Stamped>("motor_battery", 0);
 
+    ros::Publisher esc_cmd_publisher = 
+        nh.advertise<iarc7_msgs::Float64ArrayStamped>("Nano_pwm_targets", 0);
+
     boost::function<void (const iarc7_msgs::Nano&)> callback = 
     [&] (const iarc7_msgs::Nano& nano_info){
         distributeMessages(nano_info, opticalflow_pub, rangefinder_pub, long_range_pub,
             battery_publisher);
     };
+
+    boost::function<void (const iarc7_msgs::Float64ArrayStamped&)> esc_callback = 
+    [&] (const iarc7_msgs::Float64ArrayStamped& esc_cmnds){
+        sendESCCommand(esc_cmnds, esc_cmd_publisher);
+    };
     // & just means "look at all the objects already declared and pull the ones you need"
-    ros::Subscriber Nano_sub = nh.subscribe<iarc7_msgs::Nano>("nano_data",
-                                 0,
-                                 callback);
+    ros::Subscriber Nano_sub =  nh.subscribe<iarc7_msgs::Nano>("nano_data",
+                                0,
+                                callback);
+
+    ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::Float64ArrayStamped>("uav_direction_command",
+                                0, 
+                                esc_callback);
 
     ros::spin();
 
@@ -92,8 +110,10 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     flow_msg.header.stamp = (nano_info.msg_received + flow_offset);
     flow_msg.deltaX = nano_info.deltaX;
     flow_msg.deltaY = nano_info.deltaY;
-
+    if(nano_info.flow_board_offset > 0)
+    {
     opticalflow_pub.publish(flow_msg);
+    }
 
     if(short_range_msg.header.stamp.toSec() < long_range_msg.header.stamp.toSec()
         || flow_msg.header.stamp.toSec() < long_range_msg.header.stamp.toSec())
@@ -107,7 +127,20 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
     battery_publisher.publish(battery_voltage);
 
+    return;
+}
+
+void sendESCCommand(iarc7_msgs::Float64ArrayStamped esc_cmnds, ros::Publisher& esc_cmd_pub)
+{
+    iarc7_msgs::ESCCommand esc_cmd;
+    esc_cmd.motor1PWM = esc_cmnds.data[0]*255/13;
+    esc_cmd.motor2PWM = esc_cmnds.data[1]*255/13;
+    esc_cmd.motor3PWM = esc_cmnds.data[2]*255/13;
+    esc_cmd.motor4PWM = esc_cmnds.data[3]*255/13;
+
+    esc_cmd.ESCCommandStamp = esc_cmnds.header.stamp;
+
+    esc_cmd_pub.publish(esc_cmd);
 
     return;
-
 }

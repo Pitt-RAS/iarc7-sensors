@@ -21,7 +21,7 @@ struct FlowTransformerSettings {
     double variance_scale;
     double tf_timeout;
     int pix_width;
-
+    bool debug_print;
 };
 
 // variables - current / last orientation, target_size, current_altitude
