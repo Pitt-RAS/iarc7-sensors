@@ -98,8 +98,17 @@ FlowTransformer::FlowTransformer(
                 ros::NodeHandle nh)
                 :flow_transformer_settings(flow_transformer_settings),
                 twist_pub_(
-                nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
-                "twist", 10))
+                    nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+                    "twist", 10)),
+                debug_correction_pub_(
+                    nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+                    "twist_correction", 10)),
+                debug_raw_pub_(
+                    nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+                    "twist_raw", 10)),
+                debug_unrotated_vel_pub_(
+                    nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
+                    "twist_unrotated", 10))
 {
     return;
 }
@@ -165,8 +174,8 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // transform tree. Definitely fix this later.
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    float estimatedXVel = -current_meters_per_px * deltaX / dt;
-    float estimatedYVel = -current_meters_per_px * deltaY / dt;
+    float estimatedXVel = -current_meters_per_px * deltaX / std::cos(pitch)/ dt;
+    float estimatedYVel = -current_meters_per_px * deltaY / -std::cos(roll) / dt;
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
     
     double dp;
@@ -262,17 +271,26 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     twist.twist.covariance[6] = level_quad_covariance(1, 0);
     twist.twist.covariance[7] = level_quad_covariance(1, 1);
 
-    if(flow_transformer_settings.debug_print)
-    {
-        ROS_ERROR_STREAM("Level quad velocity" << level_quad_vel);
-        ROS_ERROR_STREAM("Measured current position" << curr_pos);
-        ROS_ERROR_STREAM("Measured last position" << last_pos);
-        ROS_ERROR_STREAM("camera relative x velocity" << camera_relative_vel_x);
-        ROS_ERROR_STREAM("camera relative y velocity" << camera_relative_vel_y);
-        ROS_ERROR_STREAM("corrected level quad velocity" << corrected_level_quad_vel);
-        ROS_ERROR_STREAM("Twist measurements" << twist.twist);
-    }
+    // Publish intermediate twists for debugging
+    if (flow_transformer_settings.debug_print) {
 
+        geometry_msgs::TwistWithCovarianceStamped twist_raw = twist;
+        twist_raw.twist.twist.linear.x = estimatedXVel;
+        twist_raw.twist.twist.linear.y = estimatedYVel;
+        debug_raw_pub_.publish(twist_raw);
+
+        // Corrected X/Y vel takes the velocity from pitch/roll changes into account
+        geometry_msgs::TwistWithCovarianceStamped twist_correction = twist;
+        twist_correction.twist.twist.linear.x = correctedXVel;
+        twist_correction.twist.twist.linear.y = correctedYVel;
+        debug_correction_pub_.publish(twist_correction);
+
+        geometry_msgs::TwistWithCovarianceStamped twist_unrotated = twist;
+        twist_unrotated.twist.twist.linear.x = corrected_vel.x();
+        twist_unrotated.twist.twist.linear.y = corrected_vel.y();
+        debug_unrotated_vel_pub_.publish(twist_unrotated);
+
+    }
     return twist;
 
 }

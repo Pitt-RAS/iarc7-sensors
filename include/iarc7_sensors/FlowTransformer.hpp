@@ -79,9 +79,13 @@ private:
     /// Timestamp from last message received
     ros::Time last_message_time_;
 
-    // Publisher/s
-     const ros::Publisher twist_pub_;
 
+    // Publisher/s
+    const ros::Publisher twist_pub_;
+
+    const ros::Publisher debug_correction_pub_;
+    const ros::Publisher debug_raw_pub_;
+    const ros::Publisher debug_unrotated_vel_pub_;
 
     };
 

@@ -2,18 +2,26 @@
 #include <iarc7_msgs/Nano.h>
 #include <iarc7_msgs/FlowVector.h>
 #include <iarc7_msgs/Float64Stamped.h>
-#include <iarc7_msgs/Float64ArrayStamped.h>
+#include <iarc7_msgs/PlanarThrottle.h>
 #include <iarc7_msgs/ESCCommand.h>
+#include <iarc7_msgs/FlightControllerStatus.h>
 #include <ros/ros.h>
 
 void distributeMessages(iarc7_msgs::Nano nano_info, ros::Publisher& opticalflow_pub, ros::Publisher& rangefinder_pub, ros::Publisher& long_range_pub,
                         ros::Publisher& battery_publisher);
 
-void sendESCCommand(iarc7_msgs::Float64ArrayStamped esc_cmnds, ros::Publisher& esc_cmd_pub);
+void sendESCCommand(iarc7_msgs::PlanarThrottle esc_cmnds, ros::Publisher& esc_cmd_pub);
+
+void checkFCStatus(iarc7_msgs::FlightControllerStatus, ros::Publisher& esc_cmd_pub);
 
 boost::function<void (const iarc7_msgs::Nano&)> callback;
 
-boost::function<void (const iarc7_msgs::Float64ArrayStamped)> esc_callback;
+boost::function<void (const iarc7_msgs::PlanarThrottle)> esc_callback;
+
+boost::function<void (const iarc7_msgs::FlightControllerStatus&)> fc_callback;
+
+bool deactivateSideRotors;
+
 
 int main(int argc, char* argv[]){
     
@@ -35,7 +43,7 @@ int main(int argc, char* argv[]){
         nh.advertise<iarc7_msgs::Float64Stamped>("motor_battery", 0);
 
     ros::Publisher esc_cmd_publisher = 
-        nh.advertise<iarc7_msgs::Float64ArrayStamped>("Nano_pwm_targets", 0);
+        nh.advertise<iarc7_msgs::ESCCommand>("esc_commands", 0);
 
     boost::function<void (const iarc7_msgs::Nano&)> callback = 
     [&] (const iarc7_msgs::Nano& nano_info){
@@ -43,16 +51,23 @@ int main(int argc, char* argv[]){
             battery_publisher);
     };
 
-    boost::function<void (const iarc7_msgs::Float64ArrayStamped&)> esc_callback = 
-    [&] (const iarc7_msgs::Float64ArrayStamped& esc_cmnds){
+    boost::function<void (const iarc7_msgs::PlanarThrottle&)> esc_callback = 
+    [&] (const iarc7_msgs::PlanarThrottle& esc_cmnds){
         sendESCCommand(esc_cmnds, esc_cmd_publisher);
     };
+
+    boost::function<void (const iarc7_msgs::FlightControllerStatus&)> fc_callback = 
+    [&] (const iarc7_msgs::FlightControllerStatus& fc_status){
+        checkFCStatus(fc_status, esc_cmd_publisher);
+    };
+
+
     // & just means "look at all the objects already declared and pull the ones you need"
     ros::Subscriber Nano_sub =  nh.subscribe<iarc7_msgs::Nano>("nano_data",
                                 0,
                                 callback);
 
-    ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::Float64ArrayStamped>("uav_direction_command",
+    ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::PlanarThrottle>("uav_direction_command",
                                 0, 
                                 esc_callback);
 
@@ -98,7 +113,8 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
 
     // The actual short range lidar has a chance of not being ready when we poke it. In that case,
     // we do not want to republish.
-    if(nano_info.short_range_offset > 0)
+    if(nano_info.short_range_offset > 0 && short_range_msg.range < short_range_msg.max_range
+        && short_range_msg.range > short_range_msg.min_range)
     {
 
         rangefinder_pub.publish(short_range_msg);
@@ -130,17 +146,48 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     return;
 }
 
-void sendESCCommand(iarc7_msgs::Float64ArrayStamped esc_cmnds, ros::Publisher& esc_cmd_pub)
+void sendESCCommand(iarc7_msgs::PlanarThrottle esc_cmnds, ros::Publisher& esc_cmd_pub)
 {
-    iarc7_msgs::ESCCommand esc_cmd;
-    esc_cmd.motor1PWM = esc_cmnds.data[0]*255/13;
-    esc_cmd.motor2PWM = esc_cmnds.data[1]*255/13;
-    esc_cmd.motor3PWM = esc_cmnds.data[2]*255/13;
-    esc_cmd.motor4PWM = esc_cmnds.data[3]*255/13;
+    if(deactivateSideRotors)
+    {
+        // If checkFCstatus deactivated the side rotors,
+        // don't send out another command
+        return;
+    }
 
-    esc_cmd.ESCCommandStamp = esc_cmnds.header.stamp;
+    iarc7_msgs::ESCCommand esc_cmd;
+    esc_cmd.front_motor_PWM = (esc_cmnds.front_throttle*255) - 5;
+    esc_cmd.back_motor_PWM = (esc_cmnds.back_throttle*255) - 5;
+    esc_cmd.left_motor_PWM = (esc_cmnds.left_throttle*255) - 5;
+    esc_cmd.right_motor_PWM = (esc_cmnds.right_throttle*255) - 5;
 
     esc_cmd_pub.publish(esc_cmd);
 
     return;
+
+}
+
+void checkFCStatus(iarc7_msgs::FlightControllerStatus fc_status, ros::Publisher& esc_cmd_pub)
+{
+
+    iarc7_msgs::ESCCommand esc_cmd;
+
+    if(fc_status.armed && fc_status.auto_pilot)
+    {
+        // We are armed and in autopilot, do not deactivate
+        deactivateSideRotors = false;
+        return;
+    }
+
+    // If either is false, kill everything
+
+    deactivateSideRotors = true;
+
+    esc_cmd.front_motor_PWM = 0;
+    esc_cmd.back_motor_PWM = 0;
+    esc_cmd.left_motor_PWM = 0;
+    esc_cmd.right_motor_PWM = 0;
+
+    esc_cmd_pub.publish(esc_cmd);
+
 }
