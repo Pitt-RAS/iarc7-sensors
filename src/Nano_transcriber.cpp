@@ -23,7 +23,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     long_range_msg.range = nano_info.long_range;
     long_range_msg.min_range = 0.5;
     long_range_msg.max_range = 10;
-    ros::Duration long_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.long_range_offset * 1000000));
+    ros::Duration long_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.long_range_offset * 10000));
     long_range_msg.header.stamp = nano_info.msg_received - long_range_offset;
     long_range_msg.radiation_type = sensor_msgs::Range::INFRARED;
     long_range_msg.field_of_view = 0.3;
@@ -35,7 +35,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     short_range_msg.range = nano_info.short_range;
     short_range_msg.min_range = 0.01;
     short_range_msg.max_range = 0.800;
-    ros::Duration short_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000000));
+    ros::Duration short_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 10000));
     short_range_msg.header.stamp =  nano_info.msg_received - short_range_offset;
     short_range_msg.radiation_type = sensor_msgs::Range::INFRARED;
     short_range_msg.field_of_view = 0.3;
@@ -45,7 +45,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
         rangefinder_pub.publish(short_range_msg);
     }
     
-    ros::Duration flow_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000000));
+    ros::Duration flow_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 10000));
     flow_msg.header.stamp = (nano_info.msg_received - flow_offset);
     flow_msg.deltaX = nano_info.deltaX;
     flow_msg.deltaY = nano_info.deltaY;
