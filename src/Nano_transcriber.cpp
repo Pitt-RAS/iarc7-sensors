@@ -15,9 +15,6 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
                         ros::Publisher& long_range_pub,
                         ros::Publisher& battery_publisher){
 
-    ros::Duration offsets;
-
-    //ROS_WARN("We are distributing things - current time - %f", ros::Time::now().toSec());
     sensor_msgs::Range long_range_msg;
     sensor_msgs::Range short_range_msg;
     iarc7_msgs::FlowVector flow_msg;
@@ -26,54 +23,39 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     long_range_msg.range = nano_info.long_range;
     long_range_msg.min_range = 0.5;
     long_range_msg.max_range = 10;
-    long_range_msg.header.stamp = nano_info.msg_received;
+    ros::Duration long_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.long_range_offset * 1000000));
+    long_range_msg.header.stamp = nano_info.msg_received - long_range_offset;
     long_range_msg.radiation_type = sensor_msgs::Range::INFRARED;
     long_range_msg.field_of_view = 0.3;
     long_range_msg.header.frame_id = "/tfmini";
-    long_range_pub.publish(long_range_msg);
+    if(nano_info.long_range_offset > 0) {
+        long_range_pub.publish(long_range_msg);
+    }
 
-    //ROS_WARN("The short range is %f", short_range_msg.range);
     short_range_msg.range = nano_info.short_range;
     short_range_msg.min_range = 0.01;
     short_range_msg.max_range = 0.800;
-
-    ros::Duration short_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000));
-    short_range_msg.header.stamp =  nano_info.msg_received + short_range_offset;
-
+    ros::Duration short_range_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000000));
+    short_range_msg.header.stamp =  nano_info.msg_received - short_range_offset;
     short_range_msg.radiation_type = sensor_msgs::Range::INFRARED;
     short_range_msg.field_of_view = 0.3;
     short_range_msg.header.frame_id = "/short_distance_lidar";
-
-    // The actual short range lidar has a chance of not being ready when we poke it. In that case,
-    // we do not want to republish.
-    if(nano_info.short_range_offset > 0 && short_range_msg.range < short_range_msg.max_range
-        && short_range_msg.range > short_range_msg.min_range)
+    if(nano_info.short_range_offset > 0)
     {
-
         rangefinder_pub.publish(short_range_msg);
-
     }
     
-    ros::Duration flow_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000));
-
-    flow_msg.header.stamp = (nano_info.msg_received + flow_offset);
+    ros::Duration flow_offset = ros::Duration().fromNSec((int64_t)(nano_info.short_range_offset * 1000000));
+    flow_msg.header.stamp = (nano_info.msg_received - flow_offset);
     flow_msg.deltaX = nano_info.deltaX;
     flow_msg.deltaY = nano_info.deltaY;
     if(nano_info.flow_board_offset > 0)
     {
-    opticalflow_pub.publish(flow_msg);
+        opticalflow_pub.publish(flow_msg);
     }
-
-    if(short_range_msg.header.stamp.toSec() < long_range_msg.header.stamp.toSec()
-        || flow_msg.header.stamp.toSec() < long_range_msg.header.stamp.toSec())
-    {
-        ROS_WARN("Nano_transcriber received messages out of order");
-    }
-
-    ros::Duration battery_offset = ros::Duration().fromNSec((int64_t)(nano_info.battery_offset * 1000));
 
     battery_voltage.data = nano_info.battery_voltage;
-    battery_voltage.header.stamp = nano_info.msg_received + battery_offset;
+    battery_voltage.header.stamp = nano_info.msg_received;
     battery_publisher.publish(battery_voltage);
 
     return;
@@ -89,7 +71,6 @@ void sendESCCommand(iarc7_msgs::PlanarThrottle esc_cmnds,
     if(activateSideRotors)
     {
         esc_cmd.front_motor_PWM = (esc_cmnds.front_throttle*125) + 125;
-        ROS_ERROR_STREAM(esc_cmnds.front_throttle);
         esc_cmd.back_motor_PWM = (esc_cmnds.back_throttle*125) + 125;
         esc_cmd.left_motor_PWM = (esc_cmnds.left_throttle*125) + 125;
         esc_cmd.right_motor_PWM = (esc_cmnds.right_throttle*125) + 125;
