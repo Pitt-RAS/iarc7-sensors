@@ -89,9 +89,10 @@ void sendESCCommand(iarc7_msgs::PlanarThrottle esc_cmnds,
     if(activateSideRotors)
     {
         esc_cmd.front_motor_PWM = (esc_cmnds.front_throttle*125) + 125;
-        esc_cmd.back_motor_PWM = (esc_cmnds.back_throttle*255) + 125;
-        esc_cmd.left_motor_PWM = (esc_cmnds.left_throttle*255) + 125;
-        esc_cmd.right_motor_PWM = (esc_cmnds.right_throttle*255) + 125;
+        ROS_ERROR_STREAM(esc_cmnds.front_throttle);
+        esc_cmd.back_motor_PWM = (esc_cmnds.back_throttle*125) + 125;
+        esc_cmd.left_motor_PWM = (esc_cmnds.left_throttle*125) + 125;
+        esc_cmd.right_motor_PWM = (esc_cmnds.right_throttle*125) + 125;
     }
     else {
         esc_cmd.front_motor_PWM = 125;
