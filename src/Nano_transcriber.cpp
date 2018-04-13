@@ -4,7 +4,9 @@
 #include <iarc7_msgs/Float64Stamped.h>
 #include <iarc7_msgs/PlanarThrottle.h>
 #include <iarc7_msgs/ESCCommand.h>
+#include <iarc7_msgs/OrientationThrottleStamped.h>
 #include <iarc7_msgs/FlightControllerStatus.h>
+#include <sensor_msgs/Joy.h>
 #include <ros/ros.h>
 
 void distributeMessages(iarc7_msgs::Nano nano_info, 
@@ -133,10 +135,15 @@ int main(int argc, char* argv[]){
     };
 
     bool activateSideRotors = false;
+    bool joystickActive = false;
 
-    boost::function<void (const iarc7_msgs::PlanarThrottle&)> esc_callback = 
-    [&] (const iarc7_msgs::PlanarThrottle& esc_cmnds){
-        sendESCCommand(esc_cmnds, esc_cmd_publisher, activateSideRotors);
+    boost::function<void (const iarc7_msgs::OrientationThrottleStamped&)> esc_callback = 
+    [&] (const iarc7_msgs::OrientationThrottleStamped& uav_cmd){
+        // && false is to hack the llm command off because
+        // at the time of writing flow doesn't work
+        if(!joystickActive && false) {
+            sendESCCommand(uav_cmd.planar, esc_cmd_publisher, activateSideRotors);
+        }
     };
 
     boost::function<void (const iarc7_msgs::FlightControllerStatus&)> fc_callback = 
@@ -144,15 +151,33 @@ int main(int argc, char* argv[]){
         activateSideRotors = fc_status.armed && fc_status.auto_pilot;
     };
 
+    boost::function<void (const sensor_msgs::Joy&)> joy_callback = 
+    [&] (const sensor_msgs::Joy& joy){
+        joystickActive = joy.buttons[5];
+        iarc7_msgs::PlanarThrottle planar_throttle;
+
+        planar_throttle.front_throttle = std::max(std::min(-joy.axes[1], 1.0f), 0.0f);
+        planar_throttle.back_throttle = std::max(std::min(joy.axes[1], 1.0f), 0.0f);
+        planar_throttle.right_throttle = std::max(std::min(joy.axes[0], 1.0f), 0.0f);
+        planar_throttle.left_throttle = std::max(std::min(-joy.axes[0], 1.0f), 0.0f);
+
+        if(joystickActive) {
+            sendESCCommand(planar_throttle, esc_cmd_publisher, true);
+        }
+    };
 
     // & just means "look at all the objects already declared and pull the ones you need"
-    ros::Subscriber Nano_sub =  nh.subscribe<iarc7_msgs::Nano>("nano_data",
+    ros::Subscriber Nano_sub =  nh.subscribe<iarc7_msgs::Nano>("/nano_data",
                                 0,
                                 callback);
 
-    ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::PlanarThrottle>("uav_direction_command",
+    ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::OrientationThrottleStamped>("/uav_direction_command",
                                 0, 
                                 esc_callback);
+
+    ros::Subscriber joy_cmd_sub = nh.subscribe<sensor_msgs::Joy>("/joy",
+                                0, 
+                                joy_callback);
 
     ros::spin();
 
