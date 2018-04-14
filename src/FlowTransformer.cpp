@@ -61,14 +61,14 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
 
 int main(int argc, char* argv[]){
 
-    ros::init(argc, argv, "Optical_flow_estimator");
+    ros::init(argc, argv, "optical_flow_estimator");
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
 
     iarc7_sensors::FlowTransformerSettings flow_transformer_settings;
     getFlowTransformerSettings(private_nh, flow_transformer_settings);
 
-    iarc7_sensors::FlowTransformer flow_transformer(flow_transformer_settings, nh);
+    iarc7_sensors::FlowTransformer flow_transformer(flow_transformer_settings, private_nh);
 
     // process will go - subsriber gets message with flow vectors
     // calls updateVelocity to get current orientation and altitude
@@ -167,15 +167,15 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov/2)
                                     / (flow_transformer_settings.image_width/2.0);
 
-
+    ROS_ERROR_STREAM("current meters per pix: " << current_meters_per_px);
 
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // These velocities are flipped, but it really should be implemented properly in the 
     // transform tree. Definitely fix this later.
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    float estimatedXVel = -current_meters_per_px * deltaX / std::cos(pitch)/ dt;
-    float estimatedYVel = -current_meters_per_px * deltaY / -std::cos(roll) / dt;
+    float estimatedXVel = current_meters_per_px * deltaX / std::cos(pitch)/ dt;
+    float estimatedYVel = current_meters_per_px * deltaY / -std::cos(roll) / dt;
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
     
     double dp;
@@ -226,10 +226,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         0.0);
     // Calculate covariance
     Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
-    covariance(0, 0) = flow_transformer_settings.variance
-                       / current_meters_per_px;
-    covariance(1, 1) = flow_transformer_settings.variance
-                       / current_meters_per_px;
+    covariance(0, 0) = std::pow(flow_transformer_settings.variance
+                       * current_meters_per_px / dt, 2.0);
+    covariance(1, 1) = std::pow(flow_transformer_settings.variance
+                       * current_meters_per_px / dt, 2.0);
 
     // Rotation matrix from level camera frame to level_quad
     Eigen::Matrix3d rotation_matrix;
