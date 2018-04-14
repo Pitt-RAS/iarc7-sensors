@@ -20,7 +20,7 @@ struct FlowTransformerSettings {
     double variance;
     double variance_scale;
     double tf_timeout;
-    int pix_width;
+    int image_width;
     bool debug_print;
 };
 

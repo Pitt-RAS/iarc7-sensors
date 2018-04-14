@@ -41,8 +41,8 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
         settings.tf_timeout));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/pix_width",
-        settings.pix_width));
+        "/flow_transformer/image_width",
+        settings.image_width));
 
     ROS_ASSERT(private_nh.getParam(
         "/flow_transformer/variance",
@@ -117,7 +117,7 @@ FlowTransformer::FlowTransformer(
 geometry_msgs::TwistWithCovarianceStamped 
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
-	
+
     geometry_msgs::TwistWithCovarianceStamped twist;
 
     ROS_ERROR("At beginning of estimate Velocity");
@@ -164,8 +164,8 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // dividing distance to plane by this number gives the multiplier we want
     // dtp * tan 42 /15 px
 
-    double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov)
-                                    / flow_transformer_settings.pix_width;
+    double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov/2)
+                                    / (flow_transformer_settings.image_width/2.0);
 
 
 
@@ -209,29 +209,27 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     ROS_ERROR_STREAM("dp/dt is "<< dpitch_dt << "and dr/dt is " << droll_dt);
 
 
-    float correctedXVel = distance_to_plane
-                     * -dpitch_dt
-                     / std::cos(pitch);
-    float correctedYVel = distance_to_plane
-                     * -droll_dt
-                     / -std::cos(roll);
-    ROS_ERROR_STREAM("correctedXVel is" << correctedXVel << "and correctedYVel is" << correctedYVel);
+    //float correctedXVel = distance_to_plane
+    //                 * -dpitch_dt
+    //                 / std::cos(pitch);
+    //float correctedYVel = distance_to_plane
+    //                 * -droll_dt
+    //                 / -std::cos(roll);
+    //ROS_ERROR_STREAM("correctedXVel is" << correctedXVel << "and correctedYVel is" << correctedYVel);
 
     
     // Actual velocity in level camera frame (i.e. camera frame if our pitch
     // and roll were zero)
     Eigen::Vector3d corrected_vel(
-        estimatedXVel - correctedXVel,
-        estimatedYVel - correctedYVel,
+        estimatedXVel, // - correctedXVel,
+        estimatedYVel, // - correctedYVel,
         0.0);
     // Calculate covariance
     Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
-    covariance(0, 0) = std::pow(flow_transformer_settings.variance_scale
-                              * dpitch_dt, 2.0)
-                      + flow_transformer_settings.variance;
-    covariance(1, 1) = std::pow(flow_transformer_settings.variance_scale
-                              * droll_dt, 2.0)
-                      + flow_transformer_settings.variance;
+    covariance(0, 0) = flow_transformer_settings.variance
+                       / current_meters_per_px;
+    covariance(1, 1) = flow_transformer_settings.variance
+                       / current_meters_per_px;
 
     // Rotation matrix from level camera frame to level_quad
     Eigen::Matrix3d rotation_matrix;
@@ -280,10 +278,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         debug_raw_pub_.publish(twist_raw);
 
         // Corrected X/Y vel takes the velocity from pitch/roll changes into account
-        geometry_msgs::TwistWithCovarianceStamped twist_correction = twist;
-        twist_correction.twist.twist.linear.x = correctedXVel;
-        twist_correction.twist.twist.linear.y = correctedYVel;
-        debug_correction_pub_.publish(twist_correction);
+        //geometry_msgs::TwistWithCovarianceStamped twist_correction = twist;
+        //twist_correction.twist.twist.linear.x = correctedXVel;
+        //twist_correction.twist.twist.linear.y = correctedYVel;
+        //debug_correction_pub_.publish(twist_correction);
 
         geometry_msgs::TwistWithCovarianceStamped twist_unrotated = twist;
         twist_unrotated.twist.twist.linear.x = corrected_vel.x();
