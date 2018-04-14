@@ -25,35 +25,35 @@ void getFlowTransformerSettings(const ros::NodeHandle& private_nh,
                           iarc7_sensors::FlowTransformerSettings& settings)
 {
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/fov",
+        "fov",
         settings.fov));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/min_estimation_altitude",
+        "min_estimation_altitude",
         settings.min_estimation_altitude));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/vertical_threshold",
+        "vertical_threshold",
         settings.vertical_threshold));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/tf_timeout",
+        "tf_timeout",
         settings.tf_timeout));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/image_width",
+        "image_width",
         settings.image_width));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/variance",
+        "variance",
         settings.variance));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/variance_scale",
+        "variance_scale",
         settings.variance_scale));
 
     ROS_ASSERT(private_nh.getParam(
-        "/flow_transformer/debug_print",
+        "debug_print",
         settings.debug_print));
 
 }
