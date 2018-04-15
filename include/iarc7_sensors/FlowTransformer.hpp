@@ -78,8 +78,7 @@ private:
 
     /// Timestamp from last message received
     ros::Time last_message_time_;
-
-
+    
     // Publisher/s
     const ros::Publisher twist_pub_;
 

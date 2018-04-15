@@ -96,7 +96,12 @@ namespace iarc7_sensors{
 FlowTransformer::FlowTransformer(
     const FlowTransformerSettings& flow_transformer_settings,
                 ros::NodeHandle nh)
-                :flow_transformer_settings(flow_transformer_settings),
+                :current_altitude_(0.0),
+                current_orientation_(),
+                last_orientation_(),
+                last_camera_to_level_quad_tf_(),
+                transform_wrapper_(),
+                flow_transformer_settings(flow_transformer_settings),
                 twist_pub_(
                     nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(
                     "twist", 10)),
@@ -117,6 +122,15 @@ FlowTransformer::FlowTransformer(
 geometry_msgs::TwistWithCovarianceStamped 
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
+
+    // Filter that gets applied to x/y velocity calculations to prevent random zero
+    // crossings that should not exist
+    //
+    // velocity_filtered[0] has the x measurements
+    // [1] has the y measurements 
+    static float filter_coefs[4] = {0.0677, 0.4323, 0.4323, 0.0677};
+    static int filter_order = 3; 
+    float velocity_filtered[2][filter_order+1];
 
     geometry_msgs::TwistWithCovarianceStamped twist;
 
@@ -177,7 +191,28 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     float estimatedXVel = current_meters_per_px * deltaX / std::cos(pitch)/ dt;
     float estimatedYVel = current_meters_per_px * deltaY / -std::cos(roll) / dt;
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
-    
+
+    // Move the samples taken forward in time
+    for(int i = 0; i < filter_order + 1; i++)
+    {
+        velocity_filtered[0][i+1] = velocity_filtered[0][i];
+        velocity_filtered[1][i+1] = velocity_filtered[0][i];
+    }
+
+    velocity_filtered[0][0] = estimatedXVel;
+    velocity_filtered[1][0] = estimatedYVel;
+
+
+    float filteredXVel;
+    float filteredYVel;
+
+
+    for(int i = 0; i < filter_order + 1; i++)
+    {
+        filteredXVel += velocity_filtered[0][i] * filter_coefs[i];
+        filteredYVel += velocity_filtered[1][i] * filter_coefs[i];
+    }
+
     double dp;
     double dr;
 
@@ -221,8 +256,8 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Actual velocity in level camera frame (i.e. camera frame if our pitch
     // and roll were zero)
     Eigen::Vector3d corrected_vel(
-        estimatedXVel, // - correctedXVel,
-        estimatedYVel, // - correctedYVel,
+        filteredXVel, // - correctedXVel,
+        filteredYVel, // - correctedYVel,
         0.0);
     // Calculate covariance
     Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
