@@ -159,6 +159,10 @@ int main(int argc, char* argv[]){
                                 0, 
                                 joy_callback);
 
+    ros::Subscriber fc_status_sub = nh.subscribe<iarc7_msgs::FlightControllerStatus>("/fc_status",
+                                  0,
+                                  fc_callback);
+
     ros::spin();
 
 }
