@@ -121,9 +121,7 @@ int main(int argc, char* argv[]){
 
     boost::function<void (const iarc7_msgs::OrientationThrottleStamped&)> esc_callback = 
     [&] (const iarc7_msgs::OrientationThrottleStamped& uav_cmd){
-        // && false is to hack the llm command off because
-        // at the time of writing flow doesn't work
-        if(!joystickActive && false) {
+        if(!joystickActive) {
             sendESCCommand(uav_cmd.planar, esc_cmd_publisher, activateSideRotors);
         }
     };
