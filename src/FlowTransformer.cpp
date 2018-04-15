@@ -123,16 +123,6 @@ geometry_msgs::TwistWithCovarianceStamped
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
 
-    // Filter that gets applied to x/y velocity calculations to prevent random zero
-    // crossings that should not exist
-    //
-    // velocity_filtered[0] has the x measurements
-    // [1] has the y measurements 
-    static float filter_coefs[4] = {0.0677, 0.4323, 0.4323, 0.0677};
-    //static float filter_coefs[5] = {0.0338, 0.2401, 0.4521, 0.2401, 0.0338};
-    const int filter_order = 3;
-    static float velocity_filtered[2][filter_order+1];
-
     geometry_msgs::TwistWithCovarianceStamped twist;
 
     ROS_ERROR("At beginning of estimate Velocity");
@@ -194,24 +184,24 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
 
     // Move the samples taken forward in time
-    for(int i = 0; i < filter_order + 1; i++)
+    for(int i = 0; i < filter_order_ + 1; i++)
     {
-        velocity_filtered[0][i+1] = velocity_filtered[0][i];
-        velocity_filtered[1][i+1] = velocity_filtered[0][i];
+        velocity_filtered_[0][i+1] = velocity_filtered_[0][i];
+        velocity_filtered_[1][i+1] = velocity_filtered_[0][i];
     }
 
-    velocity_filtered[0][0] = estimatedXVel;
-    velocity_filtered[1][0] = estimatedYVel;
+    velocity_filtered_[0][0] = estimatedXVel;
+    velocity_filtered_[1][0] = estimatedYVel;
 
 
     float filteredXVel = 0;
     float filteredYVel = 0;
 
 
-    for(int i = 0; i < filter_order + 1; i++)
+    for(int i = 0; i < filter_order_ + 1; i++)
     {
-        filteredXVel += velocity_filtered[0][i] * filter_coefs[i];
-        filteredYVel += velocity_filtered[1][i] * filter_coefs[i];
+        filteredXVel += velocity_filtered_[0][i] * filter_coefs_[i];
+        filteredYVel += velocity_filtered_[1][i] * filter_coefs_[i];
     }
 
     //filteredXVel = estimatedXVel;

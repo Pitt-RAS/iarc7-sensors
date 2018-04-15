@@ -86,6 +86,17 @@ private:
     const ros::Publisher debug_raw_pub_;
     const ros::Publisher debug_unrotated_vel_pub_;
 
+
+    // Filter that gets applied to x/y velocity calculations to prevent random zero
+    // crossings that should not exist
+    //
+    // velocity_filtered[0] has the x measurements
+    // [1] has the y measurements 
+    const float filter_coefs_[4] = {0.0677, 0.4323, 0.4323, 0.0677};
+    //static float filter_coefs[5] = {0.0338, 0.2401, 0.4521, 0.2401, 0.0338};
+    const int filter_order_ = 3;
+    float velocity_filtered_[2][4];
+
     };
 
 }
