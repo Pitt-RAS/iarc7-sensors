@@ -129,8 +129,9 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // velocity_filtered[0] has the x measurements
     // [1] has the y measurements 
     static float filter_coefs[4] = {0.0677, 0.4323, 0.4323, 0.0677};
-    static int filter_order = 3; 
-    float velocity_filtered[2][filter_order+1];
+    //static float filter_coefs[5] = {0.0338, 0.2401, 0.4521, 0.2401, 0.0338};
+    const int filter_order = 3;
+    static float velocity_filtered[2][filter_order+1];
 
     geometry_msgs::TwistWithCovarianceStamped twist;
 
@@ -203,8 +204,8 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     velocity_filtered[1][0] = estimatedYVel;
 
 
-    float filteredXVel;
-    float filteredYVel;
+    float filteredXVel = 0;
+    float filteredYVel = 0;
 
 
     for(int i = 0; i < filter_order + 1; i++)
@@ -212,6 +213,9 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         filteredXVel += velocity_filtered[0][i] * filter_coefs[i];
         filteredYVel += velocity_filtered[1][i] * filter_coefs[i];
     }
+
+    //filteredXVel = estimatedXVel;
+    //filteredYVel = estimatedYVel;
 
     double dp;
     double dr;
