@@ -187,7 +187,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     for(int i = filter_order_; i > -1; i--)
     {
         velocity_filtered_[0][i+1] = velocity_filtered_[0][i];
-        velocity_filtered_[1][i+1] = velocity_filtered_[0][i];
+        velocity_filtered_[1][i+1] = velocity_filtered_[1][i];
     }
 
     velocity_filtered_[0][0] = estimatedXVel;
