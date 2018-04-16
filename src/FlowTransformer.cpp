@@ -184,7 +184,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
 
     // Move the samples taken forward in time
-    for(int i = filter_order_; i > -1; i--)
+    for(int i = filter_order_-1; i > -1; i--)
     {
         velocity_filtered_[0][i+1] = velocity_filtered_[0][i];
         velocity_filtered_[1][i+1] = velocity_filtered_[1][i];
@@ -201,10 +201,12 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     for(int i = 0; i < filter_order_ + 1; i++)
     {
         ROS_ERROR_STREAM("velocity filtered X: " << velocity_filtered_[0][i] << " filter coefs: " << filter_coefs_[i]);
+        ROS_ERROR_STREAM("velocity filtered Y: " << velocity_filtered_[1][i] << " filter coefs: " << filter_coefs_[i]);
         filteredXVel += velocity_filtered_[0][i] * filter_coefs_[i];
         filteredYVel += velocity_filtered_[1][i] * filter_coefs_[i];
     }
     ROS_ERROR_STREAM("Filtered X Vel: " << filteredXVel << " estimated X Vel: " << estimatedXVel);
+    ROS_ERROR_STREAM("Filtered Y Vel: " << filteredYVel << " estimated Y Vel: " << estimatedYVel);
 
     //filteredXVel = estimatedXVel;
     //filteredYVel = estimatedYVel;
@@ -311,10 +313,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         debug_raw_pub_.publish(twist_raw);
 
         // Corrected X/Y vel takes the velocity from pitch/roll changes into account
-        //geometry_msgs::TwistWithCovarianceStamped twist_correction = twist;
-        //twist_correction.twist.twist.linear.x = correctedXVel;
-        //twist_correction.twist.twist.linear.y = correctedYVel;
-        //debug_correction_pub_.publish(twist_correction);
+        geometry_msgs::TwistWithCovarianceStamped twist_correction = twist;
+        twist_correction.twist.twist.linear.x = filteredXVel;
+        twist_correction.twist.twist.linear.y = filteredYVel;
+        debug_correction_pub_.publish(twist_correction);
 
         geometry_msgs::TwistWithCovarianceStamped twist_unrotated = twist;
         twist_unrotated.twist.twist.linear.x = corrected_vel.x();
