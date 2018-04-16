@@ -276,15 +276,17 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // When the drone rotates the camera has some velocity relative to the
     // ground even if the center of the drone doesn't move relative to the
     // ground, this cancels that effect
+    /*
     geometry_msgs::PointStamped curr_pos, last_pos;
     tf2::doTransform(curr_pos, curr_pos, current_camera_to_level_quad_tf_);
     tf2::doTransform(last_pos, last_pos, last_camera_to_level_quad_tf_);
     double camera_relative_vel_x = (curr_pos.point.x - last_pos.point.x) / dt;
     double camera_relative_vel_y = (curr_pos.point.y - last_pos.point.y) / dt;
+    */
 
     Eigen::Vector3d corrected_level_quad_vel = level_quad_vel;
-    corrected_level_quad_vel.x() -= camera_relative_vel_x;
-    corrected_level_quad_vel.y() -= camera_relative_vel_y;
+    //corrected_level_quad_vel.x() -= camera_relative_vel_x;
+    //corrected_level_quad_vel.y() -= camera_relative_vel_y;
 
     // Fill out the twist
     twist.header.stamp = time;
