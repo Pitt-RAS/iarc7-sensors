@@ -200,9 +200,11 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     for(int i = 0; i < filter_order_ + 1; i++)
     {
+        ROS_ERROR_STREAM("velocity filtered X: " << velocity_filtered_[0][i] << " filter coefs: " << filter_coefs_[i]);
         filteredXVel += velocity_filtered_[0][i] * filter_coefs_[i];
         filteredYVel += velocity_filtered_[1][i] * filter_coefs_[i];
     }
+    ROS_ERROR_STREAM("Filtered X Vel: " << " estimated X Vel: " << estimatedXVel);
 
     //filteredXVel = estimatedXVel;
     //filteredYVel = estimatedYVel;
