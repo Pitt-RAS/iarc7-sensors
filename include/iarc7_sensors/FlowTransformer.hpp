@@ -95,7 +95,8 @@ private:
     //const float filter_coefs_[4] = {0.0677, 0.4323, 0.4323, 0.0677};
     const float filter_coefs_[5] = {0.0338, 0.2401, 0.4521, 0.2401, 0.0338};
     const int filter_order_ = 4;
-    float velocity_filtered_[2][5];
+    float velocity_filtered_[2][5] = {{0.0, 0.0, 0.0, 0.0, 0.0},
+                                      {0.0, 0.0, 0.0, 0.0, 0.0}};
 
     };
 
