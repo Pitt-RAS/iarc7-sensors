@@ -211,7 +211,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     //filteredXVel = estimatedXVel;
     //filteredYVel = estimatedYVel;
 
-    double dp;
+    /*double dp;
     double dr;
 
     // These two if statements make sure that dp and dr are the shortest change
@@ -238,7 +238,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     
 
     double dpitch_dt = dp / dt;
-    double droll_dt = dr / dt;
+    double droll_dt = dr / dt;*/
     //ROS_ERROR_STREAM("dp/dt is "<< dpitch_dt << "and dr/dt is " << droll_dt);
 
 
