@@ -125,7 +125,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     geometry_msgs::TwistWithCovarianceStamped twist;
 
-    ROS_ERROR("At beginning of estimate Velocity");
+    //ROS_ERROR("At beginning of estimate Velocity");
     // Get the pitch and roll of the camera in euler angles
     // NOTE: CAMERA FRAME CONVENTIONS ARE DIFFERENT, SEE REP103
     // http://www.ros.org/reps/rep-0103.html
@@ -138,10 +138,10 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // Calculate time between last and current frame
     double dt = (time - last_message_time_).toSec();
     
-    ROS_ERROR("time is %f\n", time.toSec());
-    ROS_ERROR("last time is %f\n", last_message_time_.toSec());
+    //ROS_ERROR("time is %f\n", time.toSec());
+    //ROS_ERROR("last time is %f\n", last_message_time_.toSec());
 
-    ROS_ERROR("dt is %lf\n", dt);    
+    //ROS_ERROR("dt is %lf\n", dt);    
 
     // Distance from the camera to the ground plane, along the camera's +z axis
     //
@@ -151,13 +151,13 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     // calculates the hypotenuse if the vertical leg has length
     // current_altitude_ and the horizontal leg has length
     // ((current_altitude_*tan(pitch))^2 + (current_altitude_*tan(roll))^2)^0.5
-    ROS_ERROR_STREAM("Current altitude before use: " << current_altitude_);
+    //ROS_ERROR_STREAM("Current altitude before use: " << current_altitude_);
     double distance_to_plane = current_altitude_
                              * std::sqrt(1.0
                             + std::pow(std::tan(pitch), 2.0)
                             + std::pow(std::tan(roll), 2.0));
 
-    ROS_ERROR("distance_to_plane is %lf\n", distance_to_plane);
+    //ROS_ERROR("distance_to_plane is %lf\n", distance_to_plane);
     
     
     // Multiplier that converts measurements in pixels to measurements in
@@ -172,7 +172,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     double current_meters_per_px = distance_to_plane * std::tan(flow_transformer_settings.fov/2)
                                     / (flow_transformer_settings.image_width/2.0);
 
-    ROS_ERROR_STREAM("current meters per pix: " << current_meters_per_px);
+    //ROS_ERROR_STREAM("current meters per pix: " << current_meters_per_px);
 
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // These velocities are flipped, but it really should be implemented properly in the 
@@ -181,7 +181,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     float estimatedXVel = current_meters_per_px * deltaX / std::cos(pitch)/ dt;
     float estimatedYVel = current_meters_per_px * deltaY / -std::cos(roll) / dt;
-    ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
+    //ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
 
     // Move the samples taken forward in time
     for(int i = filter_order_-1; i > -1; i--)
@@ -200,13 +200,13 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     for(int i = 0; i < filter_order_ + 1; i++)
     {
-        ROS_ERROR_STREAM("velocity filtered X: " << velocity_filtered_[0][i] << " filter coefs: " << filter_coefs_[i]);
-        ROS_ERROR_STREAM("velocity filtered Y: " << velocity_filtered_[1][i] << " filter coefs: " << filter_coefs_[i]);
+        //ROS_ERROR_STREAM("velocity filtered X: " << velocity_filtered_[0][i] << " filter coefs: " << filter_coefs_[i]);
+        //ROS_ERROR_STREAM("velocity filtered Y: " << velocity_filtered_[1][i] << " filter coefs: " << filter_coefs_[i]);
         filteredXVel += velocity_filtered_[0][i] * filter_coefs_[i];
         filteredYVel += velocity_filtered_[1][i] * filter_coefs_[i];
     }
-    ROS_ERROR_STREAM("Filtered X Vel: " << filteredXVel << " estimated X Vel: " << estimatedXVel);
-    ROS_ERROR_STREAM("Filtered Y Vel: " << filteredYVel << " estimated Y Vel: " << estimatedYVel);
+    //ROS_ERROR_STREAM("Filtered X Vel: " << filteredXVel << " estimated X Vel: " << estimatedXVel);
+    //ROS_ERROR_STREAM("Filtered Y Vel: " << filteredYVel << " estimated Y Vel: " << estimatedYVel);
 
     //filteredXVel = estimatedXVel;
     //filteredYVel = estimatedYVel;
@@ -234,12 +234,12 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     } else {
         dr = (roll - last_roll);
     }
-    ROS_ERROR_STREAM("dp and dr are " << dp << " "  << dr);
+    //ROS_ERROR_STREAM("dp and dr are " << dp << " "  << dr);
     
 
     double dpitch_dt = dp / dt;
     double droll_dt = dr / dt;
-    ROS_ERROR_STREAM("dp/dt is "<< dpitch_dt << "and dr/dt is " << droll_dt);
+    //ROS_ERROR_STREAM("dp/dt is "<< dpitch_dt << "and dr/dt is " << droll_dt);
 
 
     //float correctedXVel = distance_to_plane
@@ -372,7 +372,7 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
         flow_vector.deltaY,
         flow_vector.header.stamp);
 
-    ROS_INFO("Before checking whether we have some infinite numbers");
+    //ROS_INFO("Before checking whether we have some infinite numbers");
 
     last_message_time_ = flow_vector.header.stamp;
 
