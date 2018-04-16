@@ -184,7 +184,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
     ROS_ERROR("estimatedX, %f dX, %d, estimatedY, %f, dY, %d\n", estimatedXVel, deltaX, estimatedYVel, deltaY);
 
     // Move the samples taken forward in time
-    for(int i = 0; i < filter_order_ + 1; i++)
+    for(int i = 0; i < filter_order_; i++)
     {
         velocity_filtered_[0][i+1] = velocity_filtered_[0][i];
         velocity_filtered_[1][i+1] = velocity_filtered_[0][i];
