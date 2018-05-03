@@ -14,17 +14,15 @@
 namespace iarc7_sensors {
 
 struct FlowTransformerSettings {
-    double fov; // 0.73 rad
-    double min_estimation_altitude; // Future reference - this is 80 mm - some transform tree value
-    double vertical_threshold; //
+    double fov; 
+    double min_estimation_altitude;
+    double vertical_threshold;
     double variance;
     double variance_scale;
     double tf_timeout;
     int image_width;
     bool debug_print;
 };
-
-// variables - current / last orientation, target_size, current_altitude
 
 class FlowTransformer {
 
@@ -35,15 +33,13 @@ public:
     //////////////////
 
     FlowTransformer(
-    const FlowTransformerSettings& flow_transformer_settings,
+    const FlowTransformerSettings& flow_transformer_settings_,
     ros::NodeHandle nh);
 
 
     void updateVelocity(iarc7_msgs::FlowVector);
 
 private:
-
-
 
     geometry_msgs::TwistWithCovarianceStamped
     estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time);
@@ -59,9 +55,6 @@ private:
 
     bool canEstimateFlow();
 
-
-
-
     ////////////////////////
     // INSTANCE VARIABLES //
     ////////////////////////
@@ -74,7 +67,7 @@ private:
     geometry_msgs::TransformStamped last_camera_to_level_quad_tf_;
     const ros_utils::SafeTransformWrapper transform_wrapper_;
 
-    iarc7_sensors::FlowTransformerSettings flow_transformer_settings;
+    iarc7_sensors::FlowTransformerSettings flow_transformer_settings_;
 
     /// Timestamp from last message received
     ros::Time last_message_time_;
@@ -93,16 +86,11 @@ private:
     // velocity_filtered[0] has the x measurements
     // [1] has the y measurements 
     const float filter_coefs_[4] = {0.0677, 0.4323, 0.4323, 0.0677};
-    //const float filter_coefs_[5] = {0.0338, 0.2401, 0.4521, 0.2401, 0.0338};
     const int filter_order_ = 3;
-    //float velocity_filtered_[2][5] = {{0.0, 0.0, 0.0, 0.0, 0.0},
-    //                                  {0.0, 0.0, 0.0, 0.0, 0.0}};
 
     float velocity_filtered_[2][4] = {{0.0, 0.0, 0.0, 0.0},
                                       {0.0, 0.0, 0.0, 0.0}};
 
-
     };
-
 }
 #endif // include guard

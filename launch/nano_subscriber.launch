@@ -1,6 +1,6 @@
 <launch>
 
-     <node name="Nano_transcriber" pkg="iarc7_sensors"
+     <node name="nano_transcriber" pkg="iarc7_sensors"
      type="iarc7_nano_transcriber">
 
      </node>
