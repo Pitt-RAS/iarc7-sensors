@@ -105,7 +105,7 @@ int main(int argc, char* argv[]){
         nh.advertise<sensor_msgs::Range>("short_distance_lidar", 0);
 
     ros::Publisher long_range_pub = 
-        nh.advertise<sensor_msgs::Range>("long_distance_lidar", 0);
+        nh.advertise<sensor_msgs::Range>("altimeter_reading", 0);
 
     ros::Publisher opticalflow_pub = 
         nh.advertise<iarc7_msgs::FlowVector>("flow_vector", 0); 
