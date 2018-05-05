@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   iarc7_safety
   message_filters
   roscpp
+  ros_utils
   tf
   tf2
   tf2_geometry_msgs
@@ -159,6 +160,29 @@ add_dependencies(iarc7_sensors_altimeter_from_subscription_node
 target_link_libraries(iarc7_sensors_altimeter_from_subscription_node
   iarc7_sensors_altimeter_filter
   ${catkin_LIBRARIES}
+)
+
+add_executable(iarc7_nano_transcriber
+   src/NanoTranscriber.cpp
+)
+ add_dependencies(iarc7_nano_transcriber
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(iarc7_nano_transcriber
+   ${catkin_LIBRARIES}
+)
+
+
+add_executable(iarc7_flow_transformer
+   src/FlowTransformer.cpp
+)
+ add_dependencies(iarc7_flow_transformer
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(iarc7_flow_transformer
+   ${catkin_LIBRARIES}
 )
 
 #############

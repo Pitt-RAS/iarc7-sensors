@@ -28,8 +28,6 @@
             type="iarc7_sensors_altimeter_from_subscription_node">
             <rosparam command="load"
                 file="$(find iarc7_sensors)/param/tfmini_altimeter.yaml" />
-            <remap from="altimeter_reading" to="long_distance_lidar" />
-            <remap from="altimeter_pose" to="long_distance_lidar_pose" />
         </node>
     </group>
 
