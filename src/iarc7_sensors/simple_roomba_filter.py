@@ -23,9 +23,56 @@ class SimpleRoobmaFilter(object):
             self._debug_pub = rospy.Publisher('/single_roomba_odom', Odometry, queue_size=10)
             self._last_time = None
 
+            # Initial uncertainty
+            self.P = np.array((
+                (0.01, 0, 0, 0),
+                (0, 0.01, 0, 0),
+                (0, 0, 10, 0),
+                (0, 0, 0, 10)))
+
+            # Process noise
+            self.Q = np.array((
+                (0.05,  0,  0,  0 ),
+                (0,  0.05,  0,  0 ),
+                (0,  0,  3,  0 ),
+                (0,  0,  0,  3 )), dtype=float)
+
+            self.H = np.array((
+                (1, 0, 0, 0),
+                (0, 1, 0, 0)), dtype=float)
+
+            # Measurement noise
+            self.R = np.array((
+                (0.05, 0),
+                (0, 0.05)), dtype=float)
+
     def callback(self, msg):
         with self._lock:
+            if not msg.roombas and self._last_time is None:
+                return
+
             if not msg.roombas:
+                dt = (msg.header.stamp - self._last_time).to_sec()
+
+                if dt <= 0:
+                    rospy.logerr(
+                            'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
+                            self._last_time,
+                            msg.header.stamp)
+                    return
+
+                F = np.array((
+                    (1,  0,  dt, 0 ),
+                    (0,  1,  0,  dt),
+                    (0,  0,  1,  0 ),
+                    (0,  0,  0,  1 )), dtype=float)
+                Q = self.Q * dt**2
+
+                self.s = F.dot(self.s)
+                self.P = F.dot(self.P).dot(F.T) + Q
+
+                self._last_time = msg.header.stamp
+                self._publish()
                 return
 
             roomba = msg.roombas[0]
@@ -34,13 +81,6 @@ class SimpleRoobmaFilter(object):
                                    [roomba.pose.y],
                                    [0],
                                    [0]], dtype=float)
-
-                # Initial uncertainty
-                self.P = np.array((
-                    (0.01, 0, 0, 0),
-                    (0, 0.01, 0, 0),
-                    (0, 0, 10, 0),
-                    (0, 0, 0, 10)))
                 self._last_time = msg.header.stamp
                 return
 
@@ -58,20 +98,9 @@ class SimpleRoobmaFilter(object):
                 (0,  1,  0,  dt),
                 (0,  0,  1,  0 ),
                 (0,  0,  0,  1 )), dtype=float)
-
-            # Process noise
-            Q = np.array((
-                (0.05,  0,  0,  0 ),
-                (0,  0.05,  0,  0 ),
-                (0,  0,  3,  0 ),
-                (0,  0,  0,  3 )), dtype=float) * dt**2
-
-            H = np.array(((1, 0, 0, 0),
-                          (0, 1, 0, 0)), dtype=float)
-
-            # Measurement noise
-            R = np.array(((0.05, 0),
-                          (0, 0.05)), dtype=float)
+            Q = self.Q * dt**2
+            H = self.H
+            R = self.R
 
             # predict
             s_new = F.dot(self.s)
@@ -90,38 +119,38 @@ class SimpleRoobmaFilter(object):
             self.s = s_new
             self.P = P_new
 
-            out_msg = OdometryArray()
-            odom = Odometry()
-            odom.header = msg.header
-            odom.child_frame_id = 'roomba0'
-            odom.pose.pose.position.x = self.s[0]
-            odom.pose.pose.position.y = self.s[1]
-
-            yaw = np.arctan2(self.s[3,0], self.s[2,0])
-            quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
-            odom.pose.pose.orientation.x = quat[0]
-            odom.pose.pose.orientation.y = quat[1]
-            odom.pose.pose.orientation.z = quat[2]
-            odom.pose.pose.orientation.w = quat[3]
-
-            vel = np.array((
-                (0.3,),
-                (0,)), dtype=float)
-            rot = np.array((
-                (np.cos(yaw), -np.sin(yaw)),
-                (np.sin(yaw), np.cos(yaw))), dtype=float)
-            vel = rot.dot(vel)
-            odom.twist.twist.linear.x = vel[0]
-            odom.twist.twist.linear.y = vel[1]
-
-            out_msg.data.append(odom)
-            self._pub.publish(out_msg)
-            self._debug_pub.publish(odom)
-
             self._last_time = msg.header.stamp
+            self._publish()
 
-            print self.s
-            print self.P
+    def _publish(self):
+        out_msg = OdometryArray()
+        odom = Odometry()
+        odom.header.stamp = self._last_time
+        odom.header.frame_id = 'map'
+        odom.child_frame_id = 'roomba0'
+        odom.pose.pose.position.x = self.s[0]
+        odom.pose.pose.position.y = self.s[1]
+
+        yaw = np.arctan2(self.s[3,0], self.s[2,0])
+        quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
+        odom.pose.pose.orientation.x = quat[0]
+        odom.pose.pose.orientation.y = quat[1]
+        odom.pose.pose.orientation.z = quat[2]
+        odom.pose.pose.orientation.w = quat[3]
+
+        vel = np.array((
+            (0.3,),
+            (0,)), dtype=float)
+        rot = np.array((
+            (np.cos(yaw), -np.sin(yaw)),
+            (np.sin(yaw), np.cos(yaw))), dtype=float)
+        vel = rot.dot(vel)
+        odom.twist.twist.linear.x = vel[0]
+        odom.twist.twist.linear.y = vel[1]
+
+        out_msg.data.append(odom)
+        self._pub.publish(out_msg)
+        self._debug_pub.publish(odom)
 
 if __name__ == '__main__':
     rospy.init_node('simple_roomba_filter')
