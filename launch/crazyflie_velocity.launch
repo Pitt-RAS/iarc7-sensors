@@ -1,0 +1,6 @@
+<launch>
+
+     <node name="crazyflie_velocity" pkg="iarc7_sensors"
+     type="crazyflie_velocity.py"/>
+
+</launch>
