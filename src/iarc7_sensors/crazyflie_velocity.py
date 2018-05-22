@@ -170,7 +170,7 @@ class CrazyflieFcComms:
             elif logconf.name == 'medium_update_rate':
                 twist = TwistWithCovarianceStamped()
                 twist.header.stamp = stamp - rospy.Duration.from_sec(0.020)
-                twist.header.frame_id = 'heading_quad'
+                twist.header.frame_id = 'quad'
                 twist.twist.twist.linear.x = data['kalman_states.vx']
                 twist.twist.twist.linear.y = data['kalman_states.vy']
                 twist.twist.twist.linear.z = 0.0
