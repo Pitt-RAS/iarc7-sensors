@@ -85,6 +85,7 @@ class SimpleRoobmaFilter(object):
                                    [roomba.pose.y],
                                    [0],
                                    [0]], dtype=float)
+                self._hack_yaw = roomba.pose.theta
                 self._last_time = msg.header.stamp
                 return
 
@@ -114,6 +115,7 @@ class SimpleRoobmaFilter(object):
             z = np.array((
                 (roomba.pose.x,),
                 (roomba.pose.y,)), dtype=float)
+            self._hack_yaw = roomba.pose.theta
             innov = z - H.dot(s_new)
             innov_cov = R + H.dot(P_new).dot(H.T)
             K = P_new.dot(H.T).dot(np.linalg.inv(innov_cov))
@@ -140,6 +142,7 @@ class SimpleRoobmaFilter(object):
         odom.pose.pose.position.y = self.s[1]
 
         yaw = np.arctan2(self.s[3,0], self.s[2,0])
+        yaw = self._hack_yaw
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         odom.pose.pose.orientation.x = quat[0]
         odom.pose.pose.orientation.y = quat[1]
