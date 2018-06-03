@@ -83,7 +83,7 @@ class SimpleRoobmaFilter(object):
         out_msg = OdometryArray()
         self._pub.publish(out_msg)
 
-    def _timer_callback(self):
+    def _timer_callback(self, timer_event):
         with self._lock:
             if self._kf_2d.initialized():
                 self._timer.shutdown()
