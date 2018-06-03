@@ -10,128 +10,55 @@ from iarc7_msgs.msg import RoombaDetectionFrame
 from iarc7_msgs.msg import OdometryArray
 from nav_msgs.msg import Odometry
 
-class SimpleRoobmaFilter(object):
-    '''
-    State [x, y, vx, vy]
-    '''
+from iarc7_sensors.roomba_filter.kalman_filter_2d import KalmanFilter2d
 
+class SimpleRoobmaFilter(object):
     def __init__(self):
         self._lock = threading.Lock()
         with self._lock:
             rospy.Subscriber('/detected_roombas', RoombaDetectionFrame, self.callback)
             self._pub = rospy.Publisher('/roombas', OdometryArray, queue_size=10)
             self._debug_pub = rospy.Publisher('/single_roomba_odom', Odometry, queue_size=10)
-            self._last_time = None
-
-            # Initial uncertainty
-            self.P = np.array((
-                (0.01, 0, 0, 0),
-                (0, 0.01, 0, 0),
-                (0, 0, 10, 0),
-                (0, 0, 0, 10)))
-
-            # Process noise
-            self.Q = np.array((
-                (0.05,  0,  0,  0 ),
-                (0,  0.05,  0,  0 ),
-                (0,  0,  3,  0 ),
-                (0,  0,  0,  3 )), dtype=float)
-
-            self.H = np.array((
-                (1, 0, 0, 0),
-                (0, 1, 0, 0)), dtype=float)
-
-            # Measurement noise
-            self.R = np.array((
-                (0.05, 0),
-                (0, 0.05)), dtype=float)
+            self._kf_2d = KalmanFilter2d()
 
     def callback(self, msg):
         with self._lock:
-            if not msg.roombas and self._last_time is None:
+            if not msg.roombas and not self._kf_2d.initialized():
+                self._publish_empty()
                 return
 
             if not msg.roombas:
-                dt = (msg.header.stamp - self._last_time).to_sec()
-
-                if dt <= 0:
-                    rospy.logerr(
-                            'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
-                            self._last_time,
-                            msg.header.stamp)
-                    return
-
-                F = np.array((
-                    (1,  0,  dt, 0 ),
-                    (0,  1,  0,  dt),
-                    (0,  0,  1,  0 ),
-                    (0,  0,  0,  1 )), dtype=float)
-                Q = self.Q * dt**2
-
-                self.s = F.dot(self.s)
-                self.P = F.dot(self.P).dot(F.T) + Q
-
-                self._last_time = msg.header.stamp
+                self._kf_2d.predict(msg.header.stamp)
                 self._publish()
                 return
 
             roomba = msg.roombas[0]
-            if self._last_time is None:
-                self.s = np.array([[roomba.pose.x],
-                                   [roomba.pose.y],
-                                   [0],
-                                   [0]], dtype=float)
-                self._last_time = msg.header.stamp
+            if not self._kf_2d.initialized():
+                self._kf_2d.set_state(
+                        msg.header.stamp,
+                        np.array([[roomba.pose.x],
+                                  [roomba.pose.y],
+                                  [0],
+                                  [0]], dtype=float))
                 return
 
-            dt = (msg.header.stamp - self._last_time).to_sec()
-
-            if dt <= 0:
-                rospy.logerr(
-                        'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
-                        self._last_time,
-                        msg.header.stamp)
-                return
-
-            F = np.array((
-                (1,  0,  dt, 0 ),
-                (0,  1,  0,  dt),
-                (0,  0,  1,  0 ),
-                (0,  0,  0,  1 )), dtype=float)
-            Q = self.Q * dt**2
-            H = self.H
-            R = self.R
-
-            # predict
-            s_new = F.dot(self.s)
-            P_new = F.dot(self.P).dot(F.T) + Q
-
-            # correct
-            z = np.array((
-                (roomba.pose.x,),
-                (roomba.pose.y,)), dtype=float)
-            innov = z - H.dot(s_new)
-            innov_cov = R + H.dot(P_new).dot(H.T)
-            K = P_new.dot(H.T).dot(np.linalg.inv(innov_cov))
-            s_new = s_new + K.dot(innov)
-            P_new = (np.eye(4) - K.dot(H)).dot(P_new)
-
-            self.s = s_new
-            self.P = P_new
-
-            self._last_time = msg.header.stamp
+            self._kf_2d.update(
+                    msg.header.stamp,
+                    np.array([roomba.pose.x, roomba.pose.y]))
             self._publish()
 
     def _publish(self):
+        state = self._kf_2d.get_state()
+
         out_msg = OdometryArray()
         odom = Odometry()
         odom.header.stamp = self._last_time
         odom.header.frame_id = 'map'
-        odom.child_frame_id = 'roomba0'
-        odom.pose.pose.position.x = self.s[0]
-        odom.pose.pose.position.y = self.s[1]
+        odom.child_frame_id = 'roomba0/base_link'
+        odom.pose.pose.position.x = state[0]
+        odom.pose.pose.position.y = state[1]
 
-        yaw = np.arctan2(self.s[3,0], self.s[2,0])
+        yaw = np.arctan2(state[3], state[2])
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         odom.pose.pose.orientation.x = quat[0]
         odom.pose.pose.orientation.y = quat[1]
@@ -151,6 +78,10 @@ class SimpleRoobmaFilter(object):
         out_msg.data.append(odom)
         self._pub.publish(out_msg)
         self._debug_pub.publish(odom)
+
+    def _publish_empty(self):
+        out_msg = OdometryArray()
+        self._pub.publish(out_msg)
 
 if __name__ == '__main__':
     rospy.init_node('simple_roomba_filter')
