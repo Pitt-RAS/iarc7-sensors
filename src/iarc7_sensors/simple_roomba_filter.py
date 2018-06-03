@@ -19,12 +19,12 @@ class SimpleRoobmaFilter(object):
             rospy.Subscriber('/detected_roombas', RoombaDetectionFrame, self.callback)
             self._pub = rospy.Publisher('/roombas', OdometryArray, queue_size=10)
             self._debug_pub = rospy.Publisher('/single_roomba_odom', Odometry, queue_size=10)
+            self._timer = rospy.Timer(rospy.Duration(0.1), self._timer_callback)
             self._kf_2d = KalmanFilter2d()
 
     def callback(self, msg):
         with self._lock:
             if not msg.roombas and not self._kf_2d.initialized():
-                self._publish_empty()
                 return
 
             if not msg.roombas:
@@ -82,6 +82,13 @@ class SimpleRoobmaFilter(object):
     def _publish_empty(self):
         out_msg = OdometryArray()
         self._pub.publish(out_msg)
+
+    def _timer_callback(self):
+        with self._lock:
+            if self._kf_2d.initialized():
+                self._timer.shutdown()
+            else:
+                self._publish_empty()
 
 if __name__ == '__main__':
     rospy.init_node('simple_roomba_filter')
