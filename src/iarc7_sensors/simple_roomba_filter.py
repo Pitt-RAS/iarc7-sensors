@@ -22,8 +22,6 @@ class SimpleRoobmaFilter(object):
             self._pub = rospy.Publisher('/roombas', OdometryArray, queue_size=10)
             self._debug_pub = rospy.Publisher('/single_roomba_odom', Odometry, queue_size=10)
             self._last_time = None
-            self.last_published_time = rospy.Time.now()
-            self.called_once = False
 
             # Initial uncertainty
             self.P = np.array((
@@ -50,9 +48,7 @@ class SimpleRoobmaFilter(object):
 
     def callback(self, msg):
         with self._lock:
-            self.called_once = True;
             if not msg.roombas and self._last_time is None:
-                self._publish_empty()
                 return
 
             if not msg.roombas:
@@ -85,7 +81,6 @@ class SimpleRoobmaFilter(object):
                                    [roomba.pose.y],
                                    [0],
                                    [0]], dtype=float)
-                self._hack_yaw = roomba.pose.theta
                 self._last_time = msg.header.stamp
                 return
 
@@ -115,7 +110,6 @@ class SimpleRoobmaFilter(object):
             z = np.array((
                 (roomba.pose.x,),
                 (roomba.pose.y,)), dtype=float)
-            self._hack_yaw = roomba.pose.theta
             innov = z - H.dot(s_new)
             innov_cov = R + H.dot(P_new).dot(H.T)
             K = P_new.dot(H.T).dot(np.linalg.inv(innov_cov))
@@ -128,21 +122,16 @@ class SimpleRoobmaFilter(object):
             self._last_time = msg.header.stamp
             self._publish()
 
-    def _publish_empty(self):
-        out_msg = OdometryArray()
-        self._pub.publish(out_msg)
-
     def _publish(self):
         out_msg = OdometryArray()
         odom = Odometry()
         odom.header.stamp = self._last_time
         odom.header.frame_id = 'map'
-        odom.child_frame_id = 'roomba0/base_link'
+        odom.child_frame_id = 'roomba0'
         odom.pose.pose.position.x = self.s[0]
         odom.pose.pose.position.y = self.s[1]
 
         yaw = np.arctan2(self.s[3,0], self.s[2,0])
-        yaw = self._hack_yaw
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         odom.pose.pose.orientation.x = quat[0]
         odom.pose.pose.orientation.y = quat[1]
@@ -162,20 +151,8 @@ class SimpleRoobmaFilter(object):
         out_msg.data.append(odom)
         self._pub.publish(out_msg)
         self._debug_pub.publish(odom)
-        self.last_published_time = rospy.Time.now()
 
 if __name__ == '__main__':
     rospy.init_node('simple_roomba_filter')
     simple_roomba_filter = SimpleRoobmaFilter()
-    rate = rospy.Rate(30)
-
-    while not simple_roomba_filter.called_once:
-        simple_roomba_filter._publish_empty()
-        rate.sleep()
-
-    while not rospy.is_shutdown():
-        if rospy.Time.now() - simple_roomba_filter.last_published_time > rospy.Duration(20.0):
-            simple_roomba_filter._publish_empty()
-        rate.sleep()
-
     rospy.spin()
