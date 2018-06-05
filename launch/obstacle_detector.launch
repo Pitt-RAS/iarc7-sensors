@@ -14,7 +14,7 @@
             pkg="rostopic"
             type="rostopic"
             args="pub -s /obstacles iarc7_msgs/ObstacleArray
-                    &quot;{'header': auto, 'obstacles': {}}&quot;
+                    &quot;{'header': auto, 'obstacles': []}&quot;
                     -r 10" />
     </group>
 </launch>
