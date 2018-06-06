@@ -2,14 +2,14 @@
     <arg name="platform" />
 
     <!-- if not 1.9 and not 2.0: -->
-    <group if="$(eval str(arg('platform')) not in ('1.9', '2.0'))">
+    <group if="$(eval str(arg('platform')) not in ('1.9', '2.0', 'crazyflie'))">
         <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector.py">
             <rosparam command="load"
                 file="$(find iarc7_sensors)/param/obstacle_detector.yaml" />
         </node>
     </group>
     <!-- else: -->
-    <group if="$(eval str(arg('platform')) in ('1.9', '2.0'))">
+    <group if="$(eval str(arg('platform')) in ('1.9', '2.0', 'crazyflie'))">
         <node name="fake_obstacle_pub"
             pkg="rostopic"
             type="rostopic"
