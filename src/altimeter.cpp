@@ -61,9 +61,8 @@ int main(int argc, char **argv) {
     iarc7_sensors::AltimeterFilter filter(
             n,
             altitude_frame,
-            [=](double altitude) -> double {
-                return altitude_variance
-                     * (1 + 60*std::exp(-250*std::pow(altitude, 4)));
+            [=](double) -> double {
+                return altitude_variance;
             },
             "level_quad");
 
@@ -114,8 +113,8 @@ int main(int argc, char **argv) {
             altimeter_reading_msg.header.frame_id = altitude_frame;
             altimeter_reading_msg.header.stamp = tempTime;
             altimeter_reading_msg.radiation_type = sensor_msgs::Range::INFRARED;
-            altimeter_reading_msg.min_range = 0;
-            altimeter_reading_msg.max_range = 100;
+            altimeter_reading_msg.min_range = 0.5;
+            altimeter_reading_msg.max_range = 10;
             altimeter_reading_msg.range = altitude;
             altitude_pub.publish(altimeter_reading_msg);
 
