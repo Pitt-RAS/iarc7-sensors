@@ -124,12 +124,8 @@ class ExtendedKalmanFilter2d(object):
             raise KalmanFilterNotInitializedException()
         with self._lock:
             assert self._s.shape == (4,1)
-            rospy.loginfo('START PREDICT')
-            rospy.loginfo('STATE: %s', self._s)
-            rospy.loginfo('COVARIANCE: %s', self._P)
 
             dt = (time - self._last_time).to_sec()
-            rospy.loginfo('DT: %s', dt)
 
             if dt < 0:
                 rospy.logerr(
@@ -153,9 +149,6 @@ class ExtendedKalmanFilter2d(object):
             self._P = J.dot(self._P).dot(J.T) + self._Q*dt**2
 
             self._last_time = time
-
-            rospy.loginfo('NEW STATE: %s', self._s)
-            rospy.loginfo('NEW COVARIANCE: %s', self._P)
 
     def set_state(self, time, state):
         assert state.shape == (4,1)
@@ -183,11 +176,6 @@ class ExtendedKalmanFilter2d(object):
             self.predict(time)
             assert self._last_time == time
 
-            rospy.loginfo('START UPDATE WITHOUT THETA')
-            rospy.loginfo('STATE: %s', self._s)
-            rospy.loginfo('COVARIANCE: %s', self._P)
-            rospy.loginfo('DT: %s', dt)
-
             R = self._R_pos
             H = self._H_pos
 
@@ -202,9 +190,6 @@ class ExtendedKalmanFilter2d(object):
             # Wrap theta between 0 and 2pi
             self._s[2,0] %= 2*np.pi
             assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
-
-            rospy.loginfo('NEW STATE: %s', self._s)
-            rospy.loginfo('NEW COVARIANCE: %s', self._P)
 
     def update_with_theta(self,
                           time,
@@ -232,11 +217,6 @@ class ExtendedKalmanFilter2d(object):
 
             self.predict(time)
             assert self._last_time == time
-
-            rospy.loginfo('START UPDATE WITH THETA')
-            rospy.loginfo('STATE: %s', self._s)
-            rospy.loginfo('COVARIANCE: %s', self._P)
-            rospy.loginfo('DT: %s', dt)
 
             R = self._R_pos_with_angle.copy()
             R[2,2] = theta_uncertainty**2
@@ -271,6 +251,3 @@ class ExtendedKalmanFilter2d(object):
             # Wrap theta between 0 and 2pi
             self._s[2,0] %= 2*np.pi
             assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
-
-            rospy.loginfo('NEW STATE: %s', self._s)
-            rospy.loginfo('NEW COVARIANCE: %s', self._P)
