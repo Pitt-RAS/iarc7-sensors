@@ -1,0 +1,44 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath, amsthm, amssymb, amsfonts, enumitem, tikz, graphicx, subcaption}
+
+%\renewcommand{\theenumi}{(\alph{enumi})} 
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+ 
+\begin{document}
+ 
+\title{EKF for Roomba Filter}
+\author{Aaron Miller}
+\date{4 Jun 2018}
+\maketitle
+
+State is $(x, y, \theta, \dot{\theta})^T$
+
+Timestep is $\tau$
+
+Transition function is
+$$x = x_0 + v \left(\frac{\cos \theta_0 \sin (\dot{\theta_0} \tau)}{\dot{\theta_0}}
+              + \frac{\sin \theta_0}{\dot{\theta_0}}(\cos (\dot{\theta_0} \tau) - 1) \right)$$
+$$y = y_0 + v \left(\frac{\sin \theta_0 \sin (\dot{\theta_0} \tau)}{\dot{\theta_0}}
+              - \frac{\cos \theta_0}{\dot{\theta_0}}(\cos (\dot{\theta_0} \tau) - 1) \right)$$
+$$\theta = \theta_0 + \dot{\theta_0} \tau$$
+$$\dot{\theta} = \dot{\theta_0}$$
+
+Its derivatives are
+$$\frac{\partial x}{\partial x_0} = 1$$
+$$\frac{\partial x}{\partial \theta_0} = v \left(\frac{-\sin \theta_0 \sin (\dot{\theta_0} \tau)}{\dot{\theta_0}}
+              + \frac{\cos \theta_0}{\dot{\theta_0}}(\cos (\dot{\theta_0} \tau) - 1) \right)$$
+$$\frac{\partial x}{\partial \dot{\theta_0}} = v \left( \cos \theta_0 \left( \tau \frac{\cos (\dot{\theta_0} \tau)}{\dot{\theta_0}} - \frac{\sin (\dot{\theta_0} \tau)}{\dot{\theta_0}^2} \right) + \sin \theta_0 \left( \tau \frac{-\sin (\dot{\theta_0} \tau)}{\dot{\theta_0}} - \frac{\cos (\dot{\theta_0} \tau) - 1}{\dot{\theta_0}^2} \right) \right)$$
+
+$$\frac{\partial y}{\partial y_0} = 1$$
+$$\frac{\partial y}{\partial \theta_0} = v \left(\frac{\cos \theta_0 \sin (\dot{\theta_0} \tau)}{\dot{\theta_0}}
+              + \frac{\sin \theta_0}{\dot{\theta_0}}(\cos (\dot{\theta_0} \tau) - 1) \right)$$
+$$\frac{\partial y}{\partial \dot{\theta_0}} = v \left( \sin \theta_0 \left( \tau \frac{\cos (\dot{\theta_0} \tau)}{\dot{\theta_0}} - \frac{\sin (\dot{\theta_0} \tau)}{\dot{\theta_0}^2} \right) - \cos \theta_0 \left( \tau \frac{-\sin (\dot{\theta_0} \tau)}{\dot{\theta_0}} - \frac{\cos (\dot{\theta_0} \tau) - 1}{\dot{\theta_0}^2} \right) \right)$$
+
+$$\frac{\partial \theta}{\partial \theta_0} = 1$$
+$$\frac{\partial \theta}{\partial \dot{\theta_0}} = \tau$$
+
+$$\frac{\partial \dot{\theta}}{\partial \dot{\theta_0}} = 1$$
+
+\end{document}

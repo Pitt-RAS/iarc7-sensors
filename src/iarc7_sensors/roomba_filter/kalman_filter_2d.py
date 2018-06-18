@@ -1,3 +1,5 @@
+from __future__ import division
+
 import threading
 
 import math
@@ -17,7 +19,7 @@ class KalmanFilter2d(object):
             self._last_time = None
 
             # Initial uncertainty
-            self._P = np.array((
+            self._initial_P = np.array((
                 (0.01, 0, 0, 0),
                 (0, 0.01, 0, 0),
                 (0, 0, 10, 0),
@@ -39,13 +41,35 @@ class KalmanFilter2d(object):
                 (0.05, 0),
                 (0, 0.05)), dtype=float)
 
+    def orientation(self):
+        with self._lock:
+            vel = self._s[2:,0]
+            vel_covariance = self._P[2:,2:]
+            angle_estimate = math.atan2(vel[1], vel[0])
+
+            # Wrap theta between 0 and 2pi
+            angle_estimate %= 2*np.pi
+            assert angle_estimate >= 0 and angle_estimate <= 2*np.pi
+
+            variances = np.linalg.eigvalsh(vel_covariance)
+            stddev = np.sqrt(variances)
+            stddev_max = np.max(stddev)
+
+            if 3*stddev_max < np.linalg.norm(vel):
+                return angle_estimate, stddev_max / np.linalg.norm(vel)
+            else:
+                return None, None
+
     def initialized(self):
         return self._last_time is not None
 
     def get_state(self):
+        '''
+        Returns (last_time, state)
+        '''
         if not self.initialized():
             raise KalmanFilterNotInitializedException()
-        return np.copy(self._s)
+        return self._last_time, np.copy(self._s)
 
     def predict(self, time):
         if not self.initialized():
@@ -78,22 +102,34 @@ class KalmanFilter2d(object):
     def set_state(self, time, state):
         with self._lock:
             self._s = state
+            self._P = self._initial_P
             self._last_time = time
 
     def update(self, time, pos):
-        if not self.initialized():
-            raise KalmanFilterNotInitializedException()
         with self._lock:
-            dt = (msg.header.stamp - self._last_time).to_sec()
+            if pos.shape != (2,):
+                raise Exception('Position must have shape (2,)')
+
+            if not self.initialized():
+                self.set_state(
+                        time,
+                        np.expand_dims(
+                            np.concatenate([pos, np.zeros((2,))]), axis=-1))
+                return
+
+            dt = (time - self._last_time).to_sec()
 
             if dt <= 0:
                 rospy.logerr(
                         'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
                         self._last_time,
-                        msg.header.stamp)
+                        time)
                 return
 
             self.predict(time)
+
+            R = self._R
+            H = self._H
 
             z = np.expand_dims(pos, axis=-1)
             innov = z - H.dot(self._s)

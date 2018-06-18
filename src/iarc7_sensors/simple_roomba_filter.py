@@ -1,80 +1,60 @@
 #!/usr/bin/env python
 
-import rospy
-import tf.transformations
+from __future__ import division
 
-import numpy as np
+import rospy
 import threading
 
 from iarc7_msgs.msg import RoombaDetectionFrame
 from iarc7_msgs.msg import OdometryArray
 from nav_msgs.msg import Odometry
 
-from iarc7_sensors.roomba_filter.kalman_filter_2d import KalmanFilter2d
+from iarc7_sensors.roomba_filter.single_roomba_filter import SingleRoombaFilter
+from ros_utils.make_safe_callback import make_safe_callback
 
 class SimpleRoobmaFilter(object):
     def __init__(self):
         self._lock = threading.Lock()
         with self._lock:
-            rospy.Subscriber('/detected_roombas', RoombaDetectionFrame, self.callback)
+            rospy.Subscriber('/detected_roombas',
+                             RoombaDetectionFrame,
+                             make_safe_callback(self.callback))
             self._pub = rospy.Publisher('/roombas', OdometryArray, queue_size=10)
             self._debug_pub = rospy.Publisher('/single_roomba_odom', Odometry, queue_size=10)
-            self._timer = rospy.Timer(rospy.Duration(0.1), self._timer_callback)
-            self._kf_2d = KalmanFilter2d()
+            self._timer = rospy.Timer(rospy.Duration(0.1),
+                                      make_safe_callback(self._timer_callback))
+            self._filter = None
+            self._world_fixed_frame = None
 
     def callback(self, msg):
         with self._lock:
-            if not msg.roombas and not self._kf_2d.initialized():
+            if self._world_fixed_frame is None:
+                self._world_fixed_frame = msg.header.frame_id
+            elif msg.header.frame_id != self._world_fixed_frame:
+                raise Exception('Message in frame {} passed to roomba'
+                               + 'filter, frame {} expected'
+                               .format(msg.header.frame_id,
+                                       self._world_fixed_frame))
+
+            if not msg.roombas and self._filter is None:
+                # TODO: make vision always publish on frame, even below
+                # detection height
                 return
 
             if not msg.roombas:
-                self._kf_2d.predict(msg.header.stamp)
-                self._publish()
+                self._publish(msg.header.stamp)
                 return
 
             roomba = msg.roombas[0]
-            if not self._kf_2d.initialized():
-                self._kf_2d.set_state(
-                        msg.header.stamp,
-                        np.array([[roomba.pose.x],
-                                  [roomba.pose.y],
-                                  [0],
-                                  [0]], dtype=float))
-                return
+            if self._filter is None:
+                self._filter = SingleRoombaFilter(self._world_fixed_frame)
 
-            self._kf_2d.update(
-                    msg.header.stamp,
-                    np.array([roomba.pose.x, roomba.pose.y]))
-            self._publish()
+            self._filter.add_measurement(msg.header.stamp, roomba)
+            self._publish(msg.header.stamp)
 
-    def _publish(self):
-        state = self._kf_2d.get_state()
-
+    def _publish(self, time):
         out_msg = OdometryArray()
-        odom = Odometry()
-        odom.header.stamp = self._last_time
-        odom.header.frame_id = 'map'
-        odom.child_frame_id = 'roomba0/base_link'
-        odom.pose.pose.position.x = state[0]
-        odom.pose.pose.position.y = state[1]
-
-        yaw = np.arctan2(state[3], state[2])
-        quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
-        odom.pose.pose.orientation.x = quat[0]
-        odom.pose.pose.orientation.y = quat[1]
-        odom.pose.pose.orientation.z = quat[2]
-        odom.pose.pose.orientation.w = quat[3]
-
-        vel = np.array((
-            (0.3,),
-            (0,)), dtype=float)
-        rot = np.array((
-            (np.cos(yaw), -np.sin(yaw)),
-            (np.sin(yaw), np.cos(yaw))), dtype=float)
-        vel = rot.dot(vel)
-        odom.twist.twist.linear.x = vel[0]
-        odom.twist.twist.linear.y = vel[1]
-
+        odom = self._filter.get_state(time)
         out_msg.data.append(odom)
         self._pub.publish(out_msg)
         self._debug_pub.publish(odom)
@@ -85,7 +65,7 @@ class SimpleRoobmaFilter(object):
 
     def _timer_callback(self, timer_event):
         with self._lock:
-            if self._kf_2d.initialized():
+            if self._filter is not None:
                 self._timer.shutdown()
             else:
                 self._publish_empty()
