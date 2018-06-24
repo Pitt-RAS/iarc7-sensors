@@ -85,17 +85,9 @@ if __name__ == '__main__':
                     'Landing Detector is not receiving switch messages fast enough')
 
         # If this fails something is seriously wrong, so we're ok with crashing
-        try:
-            last_tf = tf_buffer.lookup_transform('map',
-                                                 'base_footprint',
-                                                 rospy.Time(0))
-        except Exception as e:
-            import traceback
-            rospy.logerr('LANDING DETECTOR')
-            rospy.logerr(repr(e))
-            rospy.logerr('EXCEPTION')
-            rospy.logerr(traceback.format_exc())
-
+        last_tf = tf_buffer.lookup_transform('map',
+                                             'base_footprint',
+                                             rospy.Time(0))
         point = PointStamped()
         point = tf2_geometry_msgs.do_transform_point(point, last_tf)
         last_height = point.point.z
