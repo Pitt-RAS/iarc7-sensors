@@ -162,7 +162,6 @@ class SingleRoombaFilter(object):
                                           theta)
                 if stop_time is not None:
                     # We're stopped
-                    rospy.logerr('STARTED ROTATION')
                     self._ekf.set_v(0.0, SingleRoombaFilter.ROTATION_RATE, stop_time)
                     self._rotation_stop_time = \
                             stop_time + SingleRoombaFilter.FULL_ROTATION_TIME
