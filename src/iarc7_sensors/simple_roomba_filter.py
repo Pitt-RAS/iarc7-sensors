@@ -26,8 +26,13 @@ class SimpleRoobmaFilter(object):
             self._filter = None
             self._world_fixed_frame = None
 
+            self._last_msg_time = rospy.Time(0)
+
     def callback(self, msg):
         with self._lock:
+            assert msg.header.stamp >= self._last_msg_time
+            self._last_msg_time = msg.header.stamp
+
             if self._world_fixed_frame is None:
                 self._world_fixed_frame = msg.header.frame_id
             elif msg.header.frame_id != self._world_fixed_frame:
@@ -49,7 +54,7 @@ class SimpleRoobmaFilter(object):
             if self._filter is None:
                 self._filter = SingleRoombaFilter(self._world_fixed_frame)
 
-            self._filter.add_measurement(msg.header.stamp, roomba)
+            self._filter.update(msg.header.stamp, roomba)
             self._publish(msg.header.stamp)
 
     def _publish(self, time):

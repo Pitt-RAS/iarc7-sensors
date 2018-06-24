@@ -5,6 +5,7 @@
 #include "iarc7_sensors/AltimeterFilter.hpp"
 #include "lidarlite.hpp"
 #include "iarc7_safety/SafetyClient.hpp"
+#include "ros_utils/ParamUtils.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
@@ -51,6 +52,9 @@ int main(int argc, char **argv) {
     double altitude_variance;
     private_nh.param("altitude_variance", altitude_variance, 0.0);
 
+    const double max_altitude = ros_utils::ParamUtils::getParam<double>(
+            private_nh, "max_altitude");
+
     // Create publishers
     ros::Publisher altitude_pub =
         n.advertise<sensor_msgs::Range>("altimeter_reading", 0);
@@ -64,7 +68,8 @@ int main(int argc, char **argv) {
             [=](double) -> double {
                 return altitude_variance;
             },
-            "level_quad");
+            "level_quad",
+            max_altitude);
 
     // Connect to the lidarlite
     connect(lidarLite);

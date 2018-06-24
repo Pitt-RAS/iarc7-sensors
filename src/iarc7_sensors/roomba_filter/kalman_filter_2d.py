@@ -36,11 +36,6 @@ class KalmanFilter2d(object):
                 (1, 0, 0, 0),
                 (0, 1, 0, 0)), dtype=float)
 
-            # Measurement noise
-            self._R = np.array((
-                (0.05, 0),
-                (0, 0.05)), dtype=float)
-
     def orientation(self):
         with self._lock:
             vel = self._s[2:,0]
@@ -69,7 +64,7 @@ class KalmanFilter2d(object):
         '''
         if not self.initialized():
             raise KalmanFilterNotInitializedException()
-        return self._last_time, np.copy(self._s)
+        return self._last_time, np.copy(self._s), np.copy(self._P)
 
     def predict(self, time):
         if not self.initialized():
@@ -78,11 +73,9 @@ class KalmanFilter2d(object):
             dt = (time - self._last_time).to_sec()
 
             if dt < 0:
-                rospy.logerr(
-                        'KalmanFilter2d asked to predict into the past: %s %s',
-                        self._last_time,
-                        time)
-                return
+                raise Exception(
+                        'KalmanFilter2d asked to predict into the past: %.3f %.3f'
+                        % (self._last_time.to_sec(), time.to_sec()))
 
             if dt == 0:
                 return
@@ -92,7 +85,7 @@ class KalmanFilter2d(object):
                 (0,  1,  0,  dt),
                 (0,  0,  1,  0 ),
                 (0,  0,  0,  1 )), dtype=float)
-            Q = self._Q * dt**2
+            Q = self._Q * dt
 
             self._s = F.dot(self._s)
             self._P = F.dot(self._P).dot(F.T) + Q
@@ -105,7 +98,7 @@ class KalmanFilter2d(object):
             self._P = self._initial_P
             self._last_time = time
 
-    def update(self, time, pos):
+    def update(self, time, pos, covariance):
         with self._lock:
             if pos.shape != (2,):
                 raise Exception('Position must have shape (2,)')
@@ -119,16 +112,15 @@ class KalmanFilter2d(object):
 
             dt = (time - self._last_time).to_sec()
 
-            if dt <= 0:
-                rospy.logerr(
-                        'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
-                        self._last_time,
-                        time)
-                return
+            if dt < 0:
+                raise Exception(
+                        'KalmanFilter2d received messages less than 0ns apart: %.3f %.3f'
+                        % (self._last_time.to_sec(), time.to_sec()))
 
             self.predict(time)
 
-            R = self._R
+            R = covariance
+            assert R.shape == (2,2)
             H = self._H
 
             z = np.expand_dims(pos, axis=-1)

@@ -1,12 +1,33 @@
 from __future__ import division
 
+from collections import deque
 import math
 import numpy as np
-import rospy
 import threading
 
 class KalmanFilterNotInitializedException(Exception):
     pass
+
+class StateEvent(object):
+    def __init__(self, time, state, covariance):
+        self.time = time
+        self.state = state
+        self.covariance = covariance
+
+class PositionMeasurementEvent(object):
+    def __init__(self, time, *measurement_args):
+        self.time = time
+        self.measurement_args = measurement_args
+
+class PositionAndThetaMeasurementEvent(object):
+    def __init__(self, time, *measurement_args):
+        self.time = time
+        self.measurement_args = measurement_args
+
+class ThetaDotMeasurementEvent(object):
+    def __init__(self, time, *measurement_args):
+        self.time = time
+        self.measurement_args = measurement_args
 
 class ExtendedKalmanFilter2d(object):
     '''
@@ -16,25 +37,27 @@ class ExtendedKalmanFilter2d(object):
     '''
 
     def __init__(self, v):
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         with self._lock:
+            # Includes both `StateEvent`s and `MeasurementEvent`s
+            self._event_buffer = deque()
             self._last_time = None
 
             self._v = v
 
             # Initial uncertainty
             self._initial_P = np.array((
-                (0.5,    0,    0,     0),
-                (0,    0.5,    0,     0),
-                (0,      0,    1,     0),
-                (0,      0,    0, 100.0)), dtype=float)
+                (  0.5,    0,    0,    0),
+                (    0,  0.5,    0,    0),
+                (    0,    0,  0.5,    0),
+                (    0,    0,    0, 1e-1)), dtype=float)
 
             # Process noise
             self._Q = np.array((
-                (0.5,    0,  0,  0),
-                (0,    0.5,  0,  0),
-                (0,       0,  1,  0),
-                (0,       0,  0,  10)), dtype=float)
+                ( 1e-4,    0,    0,    0),
+                (    0, 1e-4,    0,    0),
+                (    0,    0, 1e-4,    0),
+                (    0,    0,    0, 1e-3)), dtype=float)
 
             self._H_pos = np.array((
                 (1, 0, 0, 0),
@@ -45,26 +68,38 @@ class ExtendedKalmanFilter2d(object):
                 (0, 1, 0, 0),
                 (0, 0, 1, 0),), dtype=float)
 
+            self._H_angle_dot = np.array((
+                (0, 0, 0, 1),), dtype=float)
+
             # Measurement noise
-            self._R_pos = np.array((
-                (0.01, 0),
-                (0, 0.01)), dtype=float)
-
             self._R_pos_with_angle = np.array((
-                (0.01,    0,  0),
-                (0,    0.01,  0),
-                (0,       0,  0.1),), dtype=float)
+                (float('NaN'), float('NaN'),  0           ),
+                (float('NaN'), float('NaN'),  0           ),
+                (0,            0,             float('NaN')),), dtype=float)
 
-    def initialized(self):
+            self._R_angle_dot = np.array((
+                (float('NaN'),),), dtype=float)
+
+    def _append_buffer(self, event):
+        MAX_QUEUE_LENGTH = 500
+
+        if self._event_buffer and event.time < self._event_buffer[-1].time:
+            raise Exception('ExtendedKalmanFilter2d event buffer not monotonic')
+        self._event_buffer.append(event)
+        while len(self._event_buffer) > MAX_QUEUE_LENGTH:
+            self._event_buffer.popleft()
+
+    def _initialized(self):
         return self._last_time is not None
 
     def get_state(self):
         '''
         Returns (last_time, state)
         '''
-        if not self.initialized():
-            raise KalmanFilterNotInitializedException()
-        return self._last_time, np.copy(self._s)
+        with self._lock:
+            if not self._initialized():
+                raise KalmanFilterNotInitializedException()
+            return self._last_time, np.copy(self._s), np.copy(self._P)
 
     def _jacobian(self, state, tau):
         x0 = state[0,0]
@@ -120,134 +155,278 @@ class ExtendedKalmanFilter2d(object):
         return J
 
     def predict(self, time):
-        if not self.initialized():
-            raise KalmanFilterNotInitializedException()
         with self._lock:
-            assert self._s.shape == (4,1)
+            if not self._initialized():
+                raise KalmanFilterNotInitializedException()
+            self._predict(time)
+            self._append_buffer(StateEvent(time, self._s.copy(), self._P.copy()))
 
-            dt = (time - self._last_time).to_sec()
+    def _predict(self, time):
+        assert self._s.shape == (4,1)
 
-            if dt < 0:
-                rospy.logerr(
-                        'ExtendedKalmanFilter2d asked to predict into the past: %s %s',
-                        self._last_time,
-                        time)
-                return
+        dt = (time - self._last_time).to_sec()
 
-            if dt == 0:
-                return
+        if dt < 0:
+            raise Exception(
+                    ('ExtendedKalmanFilter2d asked to predict to time %.3f,'
+                   + ' when last time was %.3f')
+                    % (time.to_sec(), self._last_time.to_sec()))
 
-            self._s[0,0] += math.cos(self._s[2,0]) * self._v * dt
-            self._s[1,0] += math.sin(self._s[2,0]) * self._v * dt
-            self._s[2,0] += self._s[3,0] * dt
+        if dt == 0:
+            return
 
-            # Wrap theta between 0 and 2pi
-            self._s[2,0] %= 2*np.pi
-            assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
+        self._s[0,0] += math.cos(self._s[2,0]) * self._v * dt
+        self._s[1,0] += math.sin(self._s[2,0]) * self._v * dt
+        self._s[2,0] += self._s[3,0] * dt
 
-            J = self._jacobian(self._s, dt)
-            self._P = J.dot(self._P).dot(J.T) + self._Q*dt**2
+        # Wrap theta between 0 and 2pi
+        self._s[2,0] %= 2*np.pi
+        assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
 
-            self._last_time = time
+        J = self._jacobian(self._s, dt)
+        self._P = J.dot(self._P).dot(J.T) + self._Q*dt
 
-    def set_state(self, time, state):
-        assert state.shape == (4,1)
+        self._last_time = time
+
+    def set_v(self, v, omega, time):
+        '''
+        Set linear and angular velocity at given time
+        '''
         with self._lock:
-            self._s = state
-            self._P = self._initial_P
-            self._last_time = time
+            for i, event in zip(xrange(len(self._event_buffer) - 1, -1, -1),
+                                reversed(self._event_buffer)):
+                if type(event) == StateEvent and event.time < time:
+                    reset_state = event
+                    break
+            else:
+                raise Exception(('Attempted to set velocity in EKF for time %.3f'
+                              + ' earlier than beginning of state buffer at %.3f')
+                                % (time.to_sec(), self._event_buffer[0].time.to_sec()))
 
-    def update(self, time, pos):
-        if not self.initialized():
-            raise KalmanFilterNotInitializedException()
-        with self._lock:
-            assert self._s.shape == (4,1)
-            assert pos.shape == (2,)
+            self._last_time = reset_state.time
+            self._s = reset_state.state.copy()
+            self._P = reset_state.covariance.copy()
 
-            dt = (time - self._last_time).to_sec()
+            i += 1
 
-            if dt <= 0:
-                rospy.logerr(
-                        'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
-                        self._last_time,
-                        time)
-                return
+            # TODO: This logic is ok given the current usage of this class in
+            # SingleRoombaFilter, but won't fly for edge cases not seen there
+            while i < len(self._event_buffer) and self._event_buffer[i].time <= time:
+                event = self._event_buffer[i]
+                if type(event) == StateEvent:
+                    event.time = self._last_time
+                    event.state = self._s.copy()
+                    event.covariance = self._P.copy()
+                elif type(event) == PositionMeasurementEvent:
+                    self._predict(event.time)
+                    self._update(event.time, *event.measurement_args)
+                elif type(event) == PositionAndThetaMeasurementEvent:
+                    self._predict(event.time)
+                    self._update_with_theta(event.time, *event.measurement_args)
+                elif type(event) == ThetaDotMeasurementEvent:
+                    self._predict(event.time)
+                    self._update_theta_dot(event.time, *event.measurement_args)
+                else:
+                    assert False
+                i += 1
 
-            self.predict(time)
+            self._predict(time)
             assert self._last_time == time
+            self._v = v
+            self._s[3,0] = omega
 
-            R = self._R_pos
-            H = self._H_pos
+            for i in range(i, len(self._event_buffer)):
+                event = self._event_buffer[i]
+                if type(event) == StateEvent:
+                    event.time = self._last_time
+                    event.state = self._s.copy()
+                    event.covariance = self._P.copy()
+                elif type(event) == PositionMeasurementEvent:
+                    self._predict(event.time)
+                    self._update(event.time, *event.measurement_args)
+                elif type(event) == PositionAndThetaMeasurementEvent:
+                    self._predict(event.time)
+                    self._update_with_theta(event.time, *event.measurement_args)
+                elif type(event) == ThetaDotMeasurementEvent:
+                    self._predict(event.time)
+                    self._update_theta_dot(event.time, *event.measurement_args)
+                else:
+                    assert False
 
-            z = np.expand_dims(pos, axis=-1)
-            innov = z - H.dot(self._s)
-            innov_cov = R + H.dot(self._P).dot(H.T)
-            K = self._P.dot(H.T).dot(np.linalg.inv(innov_cov))
+    def update(self, time, pos, covariance):
+        with self._lock:
+            if not self._initialized():
+                raise KalmanFilterNotInitializedException()
+            self._append_buffer(StateEvent(self._last_time, self._s.copy(), self._P.copy()))
+            self._update(time, pos, covariance)
+            self._append_buffer(PositionMeasurementEvent(time, pos, covariance))
 
-            self._s = self._s + K.dot(innov)
-            self._P = (np.eye(4) - K.dot(H)).dot(self._P)
+    def _update(self, time, pos, covariance):
+        assert self._s.shape == (4,1)
+        assert pos.shape == (2,)
+        assert covariance.shape == (2,2)
 
-            # Wrap theta between 0 and 2pi
-            self._s[2,0] %= 2*np.pi
-            assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
+        dt = (time - self._last_time).to_sec()
+
+        if dt < 0:
+            raise Exception(
+                    'ExtendedKalmanFilter2d received messages less than 0ns apart: %.3f %.3f'
+                    % (self._last_time.to_sec(), time.to_sec()))
+
+        self._predict(time)
+        assert self._last_time == time
+
+        R = covariance
+        H = self._H_pos.copy()
+
+        z = np.expand_dims(pos, axis=-1)
+        innov = z - H.dot(self._s)
+        innov_cov = R + H.dot(self._P).dot(H.T)
+        K = self._P.dot(H.T).dot(np.linalg.inv(innov_cov))
+
+        self._s = self._s + K.dot(innov)
+        self._P = (np.eye(4) - K.dot(H)).dot(self._P)
+
+        # Wrap theta between 0 and 2pi
+        self._s[2,0] %= 2*np.pi
+        assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
 
     def update_with_theta(self,
                           time,
                           pos,
+                          pos_covariance,
                           theta,
                           theta_uncertainty,
-                          allow_flip=False):
-        if not self.initialized():
-            state = np.expand_dims(np.concatenate([pos, np.array([theta, 0])]),
-                                   axis=-1)
-            self.set_state(time, state)
+                          allow_flip):
+        if theta_uncertainty > 0.3:
+            self.update(time, pos, pos_covariance)
             return
         with self._lock:
-            assert self._s.shape == (4,1)
-            assert pos.shape == (2,)
-
-            dt = (time - self._last_time).to_sec()
-
-            if dt <= 0:
-                rospy.logerr(
-                        'SimpleRoombaFilter received messages less than 0ns apart: %s %s',
-                        self._last_time,
-                        time)
+            if not self._initialized():
+                state = np.expand_dims(
+                             np.concatenate([pos, np.array([theta, 0])]),
+                             axis=-1)
+                self._s = state.copy()
+                self._P = self._initial_P.copy()
+                self._P[:3,:3] = self._R_pos_with_angle.copy()
+                self._P[:2,:2] = pos_covariance
+                self._P[2,2] = theta_uncertainty**2
+                self._last_time = time
+                self._append_buffer(
+                        StateEvent(self._last_time, self._s.copy(), self._P.copy()))
                 return
+            self._append_buffer(StateEvent(self._last_time, self._s.copy(), self._P.copy()))
+            self._update_with_theta(time,
+                                    pos,
+                                    pos_covariance,
+                                    theta,
+                                    theta_uncertainty,
+                                    allow_flip)
+            self._append_buffer(PositionAndThetaMeasurementEvent(
+                    time,
+                    pos,
+                    pos_covariance,
+                    theta,
+                    theta_uncertainty,
+                    allow_flip))
 
-            self.predict(time)
-            assert self._last_time == time
+    def _update_with_theta(self,
+                           time,
+                           pos,
+                           pos_covariance,
+                           theta,
+                           theta_uncertainty,
+                           allow_flip):
+        assert self._s.shape == (4,1)
+        assert pos.shape == (2,)
+        assert pos_covariance.shape == (2,2)
 
-            R = self._R_pos_with_angle.copy()
-            R[2,2] = theta_uncertainty**2
+        dt = (time - self._last_time).to_sec()
 
-            H = self._H_pos_with_angle
+        if dt < 0:
+            raise Exception(
+                    'ExtendedKalmanFilter2d received messages less than 0ns apart: %.3f %.3f'
+                    % (self._last_time.to_sec(), time.to_sec()))
 
-            z = np.expand_dims(np.concatenate(
-                [pos, np.array([theta], dtype=float)]), axis=-1)
-            innov = z - H.dot(self._s)
+        self._predict(time)
+        assert self._last_time == time
 
-            # Wrap theta update between -pi and pi
-            if innov[2,0] < -np.pi:
-                innov[2,0] += 2*np.pi
-            if innov[2,0] > np.pi:
-                innov[2,0] -= 2*np.pi
-            assert innov[2,0] >= -np.pi and innov[2,0] <= np.pi
+        R = self._R_pos_with_angle.copy()
+        R[:2,:2] = pos_covariance
+        R[2,2] = theta_uncertainty**2 * 4
 
-            if allow_flip:
-                # Wrap theta update between -pi/2 and pi/2
-                if innov[2,0] < -np.pi/2:
-                    innov[2,0] += np.pi
-                if innov[2,0] > np.pi/2:
-                    innov[2,0] -= np.pi
-                assert innov[2,0] >= -np.pi/2 and innov[2,0] <= np.pi/2
+        H = self._H_pos_with_angle.copy()
 
-            innov_cov = R + H.dot(self._P).dot(H.T)
-            K = self._P.dot(H.T).dot(np.linalg.inv(innov_cov))
+        z = np.expand_dims(np.concatenate(
+            [pos, np.array([theta], dtype=float)]), axis=-1)
+        innov = z - H.dot(self._s)
 
-            self._s = self._s + K.dot(innov)
-            self._P = (np.eye(4) - K.dot(H)).dot(self._P)
+        # Wrap theta update between -pi and pi
+        if innov[2,0] < -np.pi:
+            innov[2,0] += 2*np.pi
+        if innov[2,0] > np.pi:
+            innov[2,0] -= 2*np.pi
+        assert innov[2,0] >= -np.pi and innov[2,0] <= np.pi
 
-            # Wrap theta between 0 and 2pi
-            self._s[2,0] %= 2*np.pi
-            assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
+        if allow_flip:
+            # Wrap theta update between -pi/2 and pi/2
+            if innov[2,0] < -np.pi/2:
+                innov[2,0] += np.pi
+            if innov[2,0] > np.pi/2:
+                innov[2,0] -= np.pi
+            assert innov[2,0] >= -np.pi/2 and innov[2,0] <= np.pi/2
+
+        innov_cov = R + H.dot(self._P).dot(H.T)
+        K = self._P.dot(H.T).dot(np.linalg.inv(innov_cov))
+
+        self._s = self._s + K.dot(innov)
+        self._P = (np.eye(4) - K.dot(H)).dot(self._P)
+
+        # Wrap theta between 0 and 2pi
+        self._s[2,0] %= 2*np.pi
+        assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi
+
+    def update_theta_dot(self,
+                         time,
+                         theta_dot,
+                         theta_dot_uncertainty):
+        with self._lock:
+            if not self._initialized():
+                raise KalmanFilterNotInitializedException()
+            self._update_theta_dot(time,
+                                   theta_dot,
+                                   theta_dot_uncertainty)
+
+    def _update_theta_dot(self,
+                          time,
+                          theta_dot,
+                          theta_dot_uncertainty):
+        assert self._s.shape == (4,1)
+
+        dt = (time - self._last_time).to_sec()
+
+        if dt < 0:
+            raise Exception(
+                    'ExtendedKalmanFilter2d received messages less than 0ns apart: %.3f %.3f'
+                    % (self._last_time.to_sec(), time.to_sec()))
+
+        self._predict(time)
+        assert self._last_time == time
+
+        R = self._R_angle_dot.copy()
+        R[0,0] = theta_dot_uncertainty**2
+
+        H = self._H_angle_dot.copy()
+
+        z = np.array(((theta_dot,),), dtype=float)
+        innov = z - H.dot(self._s)
+
+        innov_cov = R + H.dot(self._P).dot(H.T)
+        K = self._P.dot(H.T).dot(np.linalg.inv(innov_cov))
+
+        self._s = self._s + K.dot(innov)
+        self._P = (np.eye(4) - K.dot(H)).dot(self._P)
+
+        # Wrap theta between 0 and 2pi
+        self._s[2,0] %= 2*np.pi
+        assert self._s[2,0] >= 0 and self._s[2,0] <= 2*np.pi

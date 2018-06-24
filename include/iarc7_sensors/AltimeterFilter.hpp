@@ -32,7 +32,8 @@ class AltimeterFilter {
     AltimeterFilter(ros::NodeHandle& nh,
                     const std::string& altimeter_frame,
                     std::function<double(double)> altitude_variance_func,
-                    const std::string& level_quad_frame);
+                    const std::string& level_quad_frame,
+                    double max_altitude=std::numeric_limits<double>::max());
     ~AltimeterFilter() = default;
 
     void updateFilter(const sensor_msgs::Range& msg);
@@ -49,6 +50,8 @@ class AltimeterFilter {
 
     message_filters::Subscriber<sensor_msgs::Range> msg_sub_;
     tf2_ros::MessageFilter<sensor_msgs::Range> msg_filter_;
+
+    const double max_altitude_;
 };
 
 } // namespace iarc7_sensors
