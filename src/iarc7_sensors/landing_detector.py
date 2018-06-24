@@ -49,7 +49,7 @@ if __name__ == '__main__':
     start_time = rospy.Time.now()
 
     if use_switches:
-        while last_switch_message is None: 
+        while last_switch_message is None:
             assert((rospy.Time.now() - start_time) < rospy.Duration(switch_startup_timeout))
             if rospy.is_shutdown():
                 raise rospy.exceptions.ROSInterruptException('No message before shutdown')
