@@ -30,7 +30,7 @@ class RoombaTransformFilter(object):
 
         transform_msg.header.stamp = odom.header.stamp
         transform_msg.header.frame_id = 'map'
-        transform_msg.child_frame_id = odom.child_frame_id + "/base_link"
+        transform_msg.child_frame_id = odom.child_frame_id
 
         transform_msg.transform.rotation = odom.pose.pose.orientation
 

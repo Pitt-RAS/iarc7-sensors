@@ -70,7 +70,7 @@ int main(int argc, char* argv[]){
 
     iarc7_sensors::FlowTransformer flow_transformer(flow_transformer_settings_, private_nh);
 
-    boost::function<void (const iarc7_msgs::FlowVector&)> callback = 
+    boost::function<void (const iarc7_msgs::FlowVector&)> callback =
     [&] (const iarc7_msgs::FlowVector& flow_vector){
         flow_transformer.updateVelocity(flow_vector);
     };
@@ -109,7 +109,7 @@ FlowTransformer::FlowTransformer(
 {
 }
 
-geometry_msgs::TwistWithCovarianceStamped 
+geometry_msgs::TwistWithCovarianceStamped
 FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int deltaY, const ros::Time& time)
 {
 
@@ -126,7 +126,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
 
     // Calculate time between last and current frame
     double dt = (time - last_message_time_).toSec();
-    
+
 
     // Distance from the camera to the ground plane, along the camera's +z axis
     //
@@ -174,7 +174,7 @@ FlowTransformer::estimateVelocityFromFlowVector(const int deltaX, const int delt
         filteredXVel += velocity_filtered_[0][i] * filter_coefs_[i];
         filteredYVel += velocity_filtered_[1][i] * filter_coefs_[i];
     }
-    
+
     // Actual velocity in level camera frame (i.e. camera frame if our pitch
     // and roll were zero)
     Eigen::Vector3d corrected_vel(
@@ -256,7 +256,7 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
                 flow_vector.header.stamp,
                 ros::Duration(flow_transformer_settings_.tf_timeout))) {
         ROS_ERROR("Unable to update position within flow transformer");
-    
+
         return;
     }
 
@@ -267,7 +267,7 @@ void FlowTransformer::updateVelocity(iarc7_msgs::FlowVector flow_vector)
     }
 
     const geometry_msgs::TwistWithCovarianceStamped velocity
-        = estimateVelocityFromFlowVector(flow_vector.deltaX, 
+        = estimateVelocityFromFlowVector(flow_vector.deltaX,
         flow_vector.deltaY,
         flow_vector.header.stamp);
 

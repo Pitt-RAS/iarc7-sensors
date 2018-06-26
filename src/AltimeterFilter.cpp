@@ -17,7 +17,8 @@ namespace iarc7_sensors {
 AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
                                  const std::string& altimeter_frame,
                                  std::function<double(double)> altitude_variance_func,
-                                 const std::string& level_quad_frame)
+                                 const std::string& level_quad_frame,
+                                 double max_altitude)
       : altimeter_frame_(altimeter_frame),
         altitude_variance_func_(std::move(altitude_variance_func)),
         level_quad_frame_(level_quad_frame),
@@ -27,7 +28,8 @@ AltimeterFilter::AltimeterFilter(ros::NodeHandle& nh,
         tf_buffer_(),
         tf_listener_(tf_buffer_),
         msg_sub_(nh, "altimeter_reading", 100),
-        msg_filter_(msg_sub_, tf_buffer_, level_quad_frame, 100, nullptr)
+        msg_filter_(msg_sub_, tf_buffer_, level_quad_frame, 100, nullptr),
+        max_altitude_(max_altitude)
 {
     msg_filter_.registerCallback(&AltimeterFilter::updateFilter, this);
 }
@@ -73,6 +75,8 @@ void AltimeterFilter::updateFilter(const sensor_msgs::Range& msg)
     if (!std::isfinite(altimeter_pose_msg.pose.pose.position.z)) {
         ROS_ERROR("Altimeter filter returned invalid altitude %f",
                   altimeter_pose_msg.pose.pose.position.z);
+    } else if (altimeter_pose_msg.pose.pose.position.z > max_altitude_) {
+        ROS_INFO("Altimeter filter ignoring reading over max altitude");
     } else {
         // Publish the transform
         altitude_pose_pub_.publish(altimeter_pose_msg);

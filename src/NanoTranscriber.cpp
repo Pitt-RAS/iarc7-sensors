@@ -9,13 +9,13 @@
 #include <sensor_msgs/Joy.h>
 #include <ros/ros.h>
 
-void distributeMessages(iarc7_msgs::Nano nano_info, 
+void distributeMessages(iarc7_msgs::Nano nano_info,
                         ros::Publisher& opticalflow_pub,
                         ros::Publisher& rangefinder_pub,
                         ros::Publisher& long_range_pub,
                         ros::Publisher& battery_publisher){
 
-    // Each of the "offset" variables is multiplied by 10000 to convert from the tens 
+    // Each of the "offset" variables is multiplied by 10000 to convert from the tens
     // of microseconds offsets given to us by the AVR chip to nanoseconds.
 
     sensor_msgs::Range long_range_msg;
@@ -32,7 +32,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     long_range_msg.field_of_view = 0.3;
     long_range_msg.header.frame_id = "/tfmini";
 
-    // From here on out, we check that the offsets are not 0 because the firmware will set the time offset of a 
+    // From here on out, we check that the offsets are not 0 because the firmware will set the time offset of a
     // measurement to 0 if the sensor is not yet ready to deliver a measurement.
     if(nano_info.long_range_offset > 0) {
         long_range_pub.publish(long_range_msg);
@@ -50,7 +50,7 @@ void distributeMessages(iarc7_msgs::Nano nano_info,
     {
         rangefinder_pub.publish(short_range_msg);
     }
-    
+
     ros::Duration flow_offset = ros::Duration().fromNSec(((int64_t)nano_info.short_range_offset * 10000));
     flow_msg.header.stamp = (nano_info.msg_received - flow_offset);
     flow_msg.deltaX = nano_info.deltaX;
@@ -97,28 +97,28 @@ void sendESCCommand(iarc7_msgs::PlanarThrottle esc_cmnds,
 }
 
 int main(int argc, char* argv[]){
-    
+
     ros::init(argc, argv, "nano_transcriber");
     ros::NodeHandle nh;
 
-    ros::Publisher rangefinder_pub = 
+    ros::Publisher rangefinder_pub =
         nh.advertise<sensor_msgs::Range>("short_distance_lidar", 0);
 
-    ros::Publisher long_range_pub = 
+    ros::Publisher long_range_pub =
         nh.advertise<sensor_msgs::Range>("altimeter_reading", 0);
 
-    ros::Publisher opticalflow_pub = 
-        nh.advertise<iarc7_msgs::FlowVector>("flow_vector", 0); 
+    ros::Publisher opticalflow_pub =
+        nh.advertise<iarc7_msgs::FlowVector>("flow_vector", 0);
 
-    ros::Publisher battery_publisher = 
+    ros::Publisher battery_publisher =
         nh.advertise<iarc7_msgs::Float64Stamped>("motor_battery", 0);
 
-    ros::Publisher esc_cmd_publisher = 
+    ros::Publisher esc_cmd_publisher =
         nh.advertise<iarc7_msgs::ESCCommand>("esc_commands", 0);
 
     // Lambdas that set up callbacks for subsribers to the AVR chip, the flight controller,
     // and the side rotor commands
-    boost::function<void (const iarc7_msgs::Nano&)> callback = 
+    boost::function<void (const iarc7_msgs::Nano&)> callback =
     [&] (const iarc7_msgs::Nano& nano_info){
         distributeMessages(nano_info, opticalflow_pub, rangefinder_pub, long_range_pub,
             battery_publisher);
@@ -127,19 +127,19 @@ int main(int argc, char* argv[]){
     bool activateSideRotors = false;
     bool joystickActive = false;
 
-    boost::function<void (const iarc7_msgs::OrientationThrottleStamped&)> esc_callback = 
+    boost::function<void (const iarc7_msgs::OrientationThrottleStamped&)> esc_callback =
     [&] (const iarc7_msgs::OrientationThrottleStamped& uav_cmd){
         if(!joystickActive) {
             sendESCCommand(uav_cmd.planar, esc_cmd_publisher, activateSideRotors);
         }
     };
 
-    boost::function<void (const iarc7_msgs::FlightControllerStatus&)> fc_callback = 
+    boost::function<void (const iarc7_msgs::FlightControllerStatus&)> fc_callback =
     [&] (const iarc7_msgs::FlightControllerStatus& fc_status){
         activateSideRotors = fc_status.armed && fc_status.auto_pilot;
     };
 
-    boost::function<void (const sensor_msgs::Joy&)> joy_callback = 
+    boost::function<void (const sensor_msgs::Joy&)> joy_callback =
     [&] (const sensor_msgs::Joy& joy){
         joystickActive = joy.buttons[5];
         iarc7_msgs::PlanarThrottle planar_throttle;
@@ -159,11 +159,11 @@ int main(int argc, char* argv[]){
                                 callback);
 
     ros::Subscriber esc_cmd_sub = nh.subscribe<iarc7_msgs::OrientationThrottleStamped>("/uav_direction_command",
-                                0, 
+                                0,
                                 esc_callback);
 
     ros::Subscriber joy_cmd_sub = nh.subscribe<sensor_msgs::Joy>("/joy",
-                                0, 
+                                0,
                                 joy_callback);
 
     ros::Subscriber fc_status_sub = nh.subscribe<iarc7_msgs::FlightControllerStatus>("/fc_status",

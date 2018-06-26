@@ -14,7 +14,7 @@
 namespace iarc7_sensors {
 
 struct FlowTransformerSettings {
-    double fov; 
+    double fov;
     double min_estimation_altitude;
     double vertical_threshold;
     double variance;
@@ -71,7 +71,7 @@ private:
 
     /// Timestamp from last message received
     ros::Time last_message_time_;
-    
+
     // Publisher/s
     const ros::Publisher twist_pub_;
 
@@ -84,7 +84,7 @@ private:
     // crossings that should not exist
     //
     // velocity_filtered[0] has the x measurements
-    // [1] has the y measurements 
+    // [1] has the y measurements
     const float filter_coefs_[4] = {0.0677, 0.4323, 0.4323, 0.0677};
     const int filter_order_ = 3;
 
