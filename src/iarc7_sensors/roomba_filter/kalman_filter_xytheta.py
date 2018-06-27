@@ -298,7 +298,7 @@ class ExtendedKalmanFilter2d(object):
                           theta,
                           theta_uncertainty,
                           allow_flip):
-        if theta_uncertainty > 0.3:
+        if theta_uncertainty > 0.3 and self._initialized():
             self.update(time, pos, pos_covariance)
             return
         with self._lock:

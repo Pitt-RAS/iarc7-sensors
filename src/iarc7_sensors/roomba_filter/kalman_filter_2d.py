@@ -20,10 +20,10 @@ class KalmanFilter2d(object):
 
             # Initial uncertainty
             self._initial_P = np.array((
-                (0.01, 0, 0, 0),
-                (0, 0.01, 0, 0),
-                (0, 0, 10, 0),
-                (0, 0, 0, 10)), dtype=float)
+                (float('NaN'), float('NaN'), 0, 0),
+                (float('NaN'), float('NaN'), 0, 0),
+                (0,            0,           10, 0),
+                (0,            0,           0, 10)), dtype=float)
 
             # Process noise
             self._Q = np.array((
@@ -92,22 +92,24 @@ class KalmanFilter2d(object):
 
             self._last_time = time
 
-    def set_state(self, time, state):
-        with self._lock:
-            self._s = state
-            self._P = self._initial_P
-            self._last_time = time
+    def _set_state(self, time, state, cov):
+        self._s = state
+        self._P = self._initial_P
+        self._P[:2,:2] = cov
+        self._last_time = time
 
     def update(self, time, pos, covariance):
         with self._lock:
             if pos.shape != (2,):
                 raise Exception('Position must have shape (2,)')
+            assert covariance.shape == (2,2)
 
             if not self.initialized():
-                self.set_state(
+                self._set_state(
                         time,
                         np.expand_dims(
-                            np.concatenate([pos, np.zeros((2,))]), axis=-1))
+                            np.concatenate([pos, np.zeros((2,))]), axis=-1),
+                        covariance)
                 return
 
             dt = (time - self._last_time).to_sec()
