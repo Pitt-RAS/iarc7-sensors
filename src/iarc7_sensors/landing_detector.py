@@ -6,7 +6,7 @@ import tf2_ros
 
 from iarc7_msgs.msg import BoolStamped
 from iarc7_msgs.msg import LandingGearContactsStamped
-from geometry_msgs.msg import PointStamped, TwistWithCovarianceStamped
+from geometry_msgs.msg import PointStamped, TwistWithCovarianceStamped, Odometry
 
 from iarc7_safety.SafetyClient import SafetyClient
 
@@ -14,8 +14,15 @@ def switch_callback(msg):
     global last_switch_message
     last_switch_message = msg
 
+def odometry_callback(msg):
+    global odemetry
+    odemetry = msg
+
 last_switch_message = None
 height_indicates_landed = False
+velocity_indicates_landed = False
+current_time = rospy.Time.now()
+last_time = rospy.Time.now()
 
 if __name__ == '__main__':
     rospy.init_node('landing_detector')
@@ -29,6 +36,9 @@ if __name__ == '__main__':
 
     landing_detected_height = rospy.get_param('~landing_detected_height')
     takeoff_detected_height = rospy.get_param('~takeoff_detected_height')
+    min_velocity_threshold = rospy.get_param('~min_velocity_threshold')
+    min_velocity_duration = rospy.get_param('~min_velocity_duration')
+    rospy.Subscriber('odometry/filtered', Odometry, odometry_callback)
     use_switches = rospy.get_param('~use_switches')
 
     if use_switches:
@@ -92,21 +102,30 @@ if __name__ == '__main__':
         point = tf2_geometry_msgs.do_transform_point(point, last_tf)
         last_height = point.point.z
 
+        # detects if we are at really low height
         if height_indicates_landed:
             height_indicates_landed = last_height < takeoff_detected_height
         else:
             height_indicates_landed = last_height < landing_detected_height
 
+        # detects if we are at really low speed
+        if (abs(odometry.twist.twist.linear.z) < min_velocity_threshold) and (last_height < veloity_detector_height):
+            current_time = rospy.Time.now()
+        else:
+            last_time = rospy.Time.now()
+        velocity_indicates_landed = (current_time-last_time) > min_velocity_duration
+
+        # aggregates all signals
         if use_switches:
             landing_detected = ((last_switch_message.front
                                 + last_switch_message.back
                                 + last_switch_message.left
                                 + last_switch_message.right
-                                + height_indicates_landed) > 3
+                                + height_indicates_landed
+                                + velocity_indicates_landed) > 3
                                 and last_height <= takeoff_detected_override_height)
         else:
-            # No need to use the override in this case
-            landing_detected = height_indicates_landed
+            landing_detected = velocity_indicates_landed or height_indicates_landed
 
 
         if landing_detected:
