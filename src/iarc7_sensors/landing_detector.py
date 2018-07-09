@@ -6,7 +6,8 @@ import tf2_ros
 
 from iarc7_msgs.msg import BoolStamped
 from iarc7_msgs.msg import LandingGearContactsStamped
-from geometry_msgs.msg import PointStamped, TwistWithCovarianceStamped, Odometry
+from geometry_msgs.msg import PointStamped, TwistWithCovarianceStamped
+from nav_msgs.msg import Odometry
 
 from iarc7_safety.SafetyClient import SafetyClient
 
@@ -15,17 +16,17 @@ def switch_callback(msg):
     last_switch_message = msg
 
 def odometry_callback(msg):
-    global odemetry
-    odemetry = msg
+    global odometry
+    odometry = msg
 
 last_switch_message = None
 height_indicates_landed = False
 velocity_indicates_landed = False
+rospy.init_node('landing_detector')
 current_time = rospy.Time.now()
 last_time = rospy.Time.now()
 
 if __name__ == '__main__':
-    rospy.init_node('landing_detector')
     absolute_velocity_pub = rospy.Publisher('absolute_vel', TwistWithCovarianceStamped, queue_size=0)
     landing_detected_pub = rospy.Publisher('landing_detected', BoolStamped, queue_size=0)
 
@@ -38,6 +39,7 @@ if __name__ == '__main__':
     takeoff_detected_height = rospy.get_param('~takeoff_detected_height')
     min_velocity_threshold = rospy.get_param('~min_velocity_threshold')
     min_velocity_duration = rospy.get_param('~min_velocity_duration')
+    velocity_detector_height =  rospy.get_param('~velocity_detector_height')
     rospy.Subscriber('odometry/filtered', Odometry, odometry_callback)
     use_switches = rospy.get_param('~use_switches')
 
@@ -109,11 +111,11 @@ if __name__ == '__main__':
             height_indicates_landed = last_height < landing_detected_height
 
         # detects if we are at really low speed
-        if (abs(odometry.twist.twist.linear.z) < min_velocity_threshold) and (last_height < veloity_detector_height):
+        if (abs(odometry.twist.twist.linear.z) < min_velocity_threshold) and (last_height < velocity_detector_height):
             current_time = rospy.Time.now()
         else:
             last_time = rospy.Time.now()
-        velocity_indicates_landed = (current_time-last_time) > min_velocity_duration
+        velocity_indicates_landed = (current_time-last_time) > rospy.Duration(min_velocity_duration)
 
         # aggregates all signals
         if use_switches:

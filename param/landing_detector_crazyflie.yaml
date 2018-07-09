@@ -9,3 +9,13 @@ takeoff_detected_height: 0.055
 
 # Whether or not to use the switches
 use_switches: false
+
+# Minimum velocity threshold for landing
+min_velocity_threshold: 0.1
+
+# Minimum velocity threshold duration
+min_velocity_duration: 2
+
+# Height at which velocity detector is active
+velocity_detector_height: 0.1
+
