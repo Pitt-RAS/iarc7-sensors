@@ -8,8 +8,13 @@
                 file="$(find iarc7_sensors)/param/obstacle_detector.yaml" />
         </node>
     </group>
+    <!-- else if 2.0: -->
+    <group if="$(eval str(arg('platform')) in ('2.0',))">
+        <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector_r200.py">
+        </node>
+    </group>
     <!-- else: -->
-    <group if="$(eval str(arg('platform')) in ('1.9', '2.0', 'crazyflie'))">
+    <group if="$(eval str(arg('platform')) in ('1.9', 'crazyflie'))">
         <node name="fake_obstacle_pub"
             pkg="rostopic"
             type="rostopic"
@@ -18,3 +23,4 @@
                     -r 10" />
     </group>
 </launch>
+
