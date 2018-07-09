@@ -47,6 +47,8 @@ def process_depth_callback(data):
     unit_y = np.array([0, 1, 0])
     unit_z = np.array([0, 0, 1])
 
+    # The representation of unit x,y,z vectors in the map frame
+    # within the obstacle frame
     transformed_x = np.matmul(m_to_o_rot_matrix, unit_x)
     transformed_y = np.matmul(m_to_o_rot_matrix, unit_y)
     transformed_z = np.matmul(m_to_o_rot_matrix, unit_z)
@@ -93,8 +95,10 @@ def process_depth_callback(data):
     sampled_obstacle_points = sampled_obstacle_points.astype(np.float32)
 
     # eps - min distance between clusters to be considered separate clusters (currently about 
-    # the radius of a roomba)
-    db = DBSCAN(min_samples=100, algorithm='ball_tree', eps = .15, leaf_size = 100).fit(sampled_obstacle_points)
+    # the radius of a roomba) 
+    # The manhattan metric is chosen because it is computationally cheaper than calculating the euclidean
+    # distance and is just as accurate (in terms of the output clusters).
+    db = DBSCAN(min_samples=10, algorithm='ball_tree', eps = .15, leaf_size = 20, metric = 'manhattan').fit(sampled_obstacle_points)
 
     # labels is merely an array of integers from 0 to the number of clusters, 
     # specifying which points from dbscan_input belong to which cluster
@@ -105,8 +109,6 @@ def process_depth_callback(data):
 
     # The final output
     obstacles = ObstacleArray()
-
-    loop_time = rospy.get_time()
 
     for i in range(0, n_clusters):
 
@@ -191,6 +193,5 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
-
         rate.sleep()
 
