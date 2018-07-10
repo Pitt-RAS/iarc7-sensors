@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     connect(lidarLite);
 
     // Attempt to form bond to safety node after lidarlite is connected
-    ROS_INFO("altimeter: Attempting to form safety bond");
+    ROS_DEBUG("altimeter: Attempting to form safety bond");
     Iarc7Safety::SafetyClient safety_client(n, "long_range_altimeter");
     ROS_ASSERT_MSG(safety_client.formBond(),
             "altimeter: Could not form bond with safety client");

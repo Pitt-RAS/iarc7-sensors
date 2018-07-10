@@ -38,12 +38,28 @@ cap = Capture1280x720(
         0,
         0)
 
-rate = rospy.Rate(60)
+rate = rospy.Rate(30)
 
 #while cap is None and not rospy.is_shutdown():
 #    rate.sleep()
 
-ret, frame = cap.read()
+while not rospy.is_shutdown() and rospy.Time.now() == rospy.Time():
+    rate.sleep()
+
+if rospy.is_shutdown():
+    raise rospy.ROSInterruptException()
+
+ret = False
+start_time = rospy.Time.now()
+while (not ret
+       and not rospy.is_shutdown()
+       and (rospy.Time.now() - start_time) < rospy.Duration(5.0)):
+    ret, _ = cap.read()
+    rate.sleep()
+
+if rospy.is_shutdown():
+    raise rospy.ROSInterruptException()
+
 assert ret
 
 safety_client = SafetyClient('leopard_imaging_camera')
@@ -57,9 +73,11 @@ while not rospy.is_shutdown():
                 'Fatal active in Leopard Imaging camera node')
 
     ret, frame = cap.read()
+    stamp = rospy.Time.now()
     if ret:
-        #frame = np.maximum(np.minimum(frame * np.array([1.2, 0.558, 0.612]) + np.array([62, 72.13, 68]), np.array([255])), np.array([0])).astype(np.uint8)
         cv_image = bridge.cv2_to_imgmsg(frame, 'bgr8')
+        cv_image.header.stamp = stamp
+        cv_image.header.frame_id = 'bottom_camera_rgb_optical_frame'
         pub.publish(cv_image)
     else:
         raise IARCFatalSafetyException('No frame from camera')
