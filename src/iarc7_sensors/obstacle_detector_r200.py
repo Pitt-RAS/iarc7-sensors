@@ -179,6 +179,11 @@ def process_depth_callback(data):
     obstacles.header.stamp = data.header.stamp
 
     obstacle_pub.publish(obstacles)
+
+def get_calibration_parameters(parameters):
+
+    camera.fromCameraInfo(parameters)
+    camera_info_sub.unregister()
     
 if __name__ == '__main__':
 
