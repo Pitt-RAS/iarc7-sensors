@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
     rospy.Subscriber('/camera/depth/image_raw', Image, process_depth_callback, queue_size = 1)
 
-    obstacle_pub = rospy.Publisher('/obstacles', ObstacleArray, queue_size=5)
+    obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray, queue_size=5)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
