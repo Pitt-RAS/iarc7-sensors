@@ -43,7 +43,9 @@ while not rospy.is_shutdown():
     ret, frame = cap.read()
     assert ret
 
-    stamp = rospy.Time.now()
+    CAMERA_TIMESTAMP_OFFSET = -0.050
+
+    stamp = rospy.Time.now() + rospy.Duration(CAMERA_TIMESTAMP_OFFSET)
     cv_image = bridge.cv2_to_imgmsg(frame, 'bgr8')
     cv_image.header.stamp = stamp
     cv_image.header.frame_id = 'bottom_camera_rgb_optical_frame'
