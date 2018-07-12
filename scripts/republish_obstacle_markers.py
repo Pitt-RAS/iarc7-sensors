@@ -48,6 +48,6 @@ if __name__ == '__main__':
     vis_pub = rospy.Publisher('/obstacle_detection_markers',
                               Marker,
                               queue_size=5)
-    rospy.Subscriber('/obstacles', ObstacleArray, callback)
+    rospy.Subscriber('/detected_obstacles', ObstacleArray, callback)
     rospy.spin()
 
