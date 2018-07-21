@@ -143,6 +143,7 @@ class SingleRoombaFilter(object):
             # Stopping logic
             MEASUREMENT_QUEUE_LEN = rospy.Duration(1.0)
             while self._measurements[0][0] < self._measurements[-1][0] - MEASUREMENT_QUEUE_LEN:
+                self._ekf.set_oldest_buffer_time(self._measurements[0][0])
                 self._measurements.popleft()
 
             if self._state == SingleRoombaFilterState.HAVE_ORIENTATION:
