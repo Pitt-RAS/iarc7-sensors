@@ -10,10 +10,41 @@
     </group>
     <!-- else if 2.0: -->
     <group if="$(eval str(arg('platform')) in ('2.0',))">
-        <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector_r200.py">
+        <node name="front_obstacle_detector"
+            pkg="iarc7_sensors"
+            type="obstacle_detector_r200.py">
+            <remap from="/camera/depth/image_rect_raw"
+                to="/front_camera/depth/image_rect_raw" />
+            <remap from="/camera/depth/camera_info"
+                to="/front_camera/depth/camera_info" />
         </node>
-        
-        <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle_markers.py">
+
+        <node name="left_obstacle_detector" pkg="iarc7_sensors"
+            type="obstacle_detector_r200.py">
+            <remap from="/camera/depth/image_rect_raw"
+                to="/left_camera/depth/image_rect_raw" />
+            <remap from="/camera/depth/camera_info"
+                to="/left_camera/depth/camera_info" />
+        </node>
+
+        <node name="right_obstacle_detector" pkg="iarc7_sensors"
+            type="obstacle_detector_r200.py">
+            <remap from="/camera/depth/image_rect_raw"
+                to="/right_camera/depth/image_rect_raw" />
+            <remap from="/camera/depth/camera_info"
+                to="/right_camera/depth/camera_info" />
+        </node>
+
+        <node name="back_obstacle_detector" pkg="iarc7_sensors"
+            type="obstacle_detector_r200.py">
+            <remap from="/camera/depth/image_rect_raw"
+                to="/back_camera/depth/image_rect_raw" />
+            <remap from="/camera/depth/camera_info"
+                to="/back_camera/depth/camera_info" />
+        </node>
+
+        <node name="republish_obstacle_detections" pkg="iarc7_sensors"
+            type="republish_obstacle_markers.py">
         </node>
     </group>
     <!-- else: -->

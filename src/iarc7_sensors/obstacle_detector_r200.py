@@ -176,10 +176,21 @@ def process_depth_callback(data, camera_info):
         obstacle.odom.pose.pose.position.y = map_coordinates[1]
         obstacle.odom.pose.pose.position.z = 0
 
+        obstacle.odom.pose.covariance[0] = 0.04
+        obstacle.odom.pose.covariance[1] = 0.0
+        obstacle.odom.pose.covariance[6] = 0.0
+        obstacle.odom.pose.covariance[7] = 0.04
+
+        obstacle.base_height = 0.1
+        obstacle.base_radius = 0.15
+        obstacle.pipe_radius = 0.05
+
         obstacle.header.stamp = data.header.stamp
+        obstacle.header.frame_id = 'map'
         obstacles.obstacles.append(obstacle)
 
     obstacles.header.stamp = data.header.stamp
+    obstacles.header.frame_id = 'map'
 
     obstacle_pub.publish(obstacles)
 
@@ -192,15 +203,15 @@ if __name__ == '__main__':
 
     rospy.init_node('obstacle_detector_r200')
 
-    image_sub = message_filters.Subscriber("/front_camera/depth/image_rect_raw", Image)
-    camera_info_sub = message_filters.Subscriber("/front_camera/depth/camera_info", CameraInfo)
-
-    ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
-    ts.registerCallback(process_depth_callback)
+    image_sub = message_filters.Subscriber("/camera/depth/image_rect_raw", Image)
+    camera_info_sub = message_filters.Subscriber("/camera/depth/camera_info", CameraInfo)
 
     obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray, queue_size=5)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
+    ts.registerCallback(process_depth_callback)
 
     rospy.spin()
