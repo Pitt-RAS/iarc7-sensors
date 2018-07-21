@@ -17,16 +17,19 @@ from sklearn.cluster import DBSCAN
 from iarc7_msgs.msg import Obstacle, ObstacleArray
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+import message_filters
 
 camera = PinholeCameraModel()
 bridge = CvBridge()
 
-def process_depth_callback(data):
+def process_depth_callback(data, camera_info):
+
+    camera.fromCameraInfo(camera_info)
 
     # m_to_o = map_to_optical
-    m_to_o_trans = tf_buffer.lookup_transform("camera_depth_optical_frame", "map", data.header.stamp)
+    m_to_o_trans = tf_buffer.lookup_transform(data.header.frame_id, "map", data.header.stamp, rospy.Duration(1))
 
-    o_to_m_trans = tf_buffer.lookup_transform("map", "camera_depth_optical_frame", data.header.stamp)
+    o_to_m_trans = tf_buffer.lookup_transform("map", data.header.frame_id, data.header.stamp, rospy.Duration(1))
 
     m_to_o_quat = np.array([m_to_o_trans.transform.rotation.x,
                            m_to_o_trans.transform.rotation.y,
@@ -189,14 +192,15 @@ if __name__ == '__main__':
 
     rospy.init_node('obstacle_detector_r200')
 
-    rospy.Subscriber('/camera/depth/image_raw', Image, process_depth_callback, queue_size = 1)
+    image_sub = message_filters.Subscriber("/front_camera/depth/image_rect_raw", Image)
+    camera_info_sub = message_filters.Subscriber("/front_camera/depth/camera_info", CameraInfo)
+
+    ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
+    ts.registerCallback(process_depth_callback)
 
     obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray, queue_size=5)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
 
-    rate = rospy.Rate(30)
-    while not rospy.is_shutdown():
-        rate.sleep()
-
+    rospy.spin()

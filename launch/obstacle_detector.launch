@@ -13,7 +13,7 @@
         <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector_r200.py">
         </node>
         
-        <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle-markers.py">
+        <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle_markers.py">
         </node>
     </group>
     <!-- else: -->
