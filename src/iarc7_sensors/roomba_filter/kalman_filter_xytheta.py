@@ -4,6 +4,7 @@ from collections import deque
 import math
 import numpy as np
 import threading
+import rospy
 
 class KalmanFilterNotInitializedException(Exception):
     pass
@@ -80,14 +81,32 @@ class ExtendedKalmanFilter2d(object):
             self._R_angle_dot = np.array((
                 (float('NaN'),),), dtype=float)
 
-    def _append_buffer(self, event):
-        MAX_QUEUE_LENGTH = 500
+            self._oldest_buffer_time = rospy.Time(0)
 
+    def _append_buffer(self, event):
         if self._event_buffer and event.time < self._event_buffer[-1].time:
             raise Exception('ExtendedKalmanFilter2d event buffer not monotonic')
         self._event_buffer.append(event)
-        while len(self._event_buffer) > MAX_QUEUE_LENGTH:
-            self._event_buffer.popleft()
+
+        last_state_seen = -1
+        for i, event in enumerate(self._event_buffer):
+            if event.time >= self._oldest_buffer_time:
+                break
+            if type(event) is StateEvent:
+                last_state_seen = i
+
+        if last_state_seen != -1:
+            for _ in range(last_state_seen):
+                self._event_buffer.popleft()
+
+    def set_oldest_buffer_time(self, time):
+        with self._lock:
+            if time < self._oldest_buffer_time:
+                raise Exception(('Attempted to move buffer time backward from'
+                      + '%.3f to %.3f') %
+                      (self._oldest_buffer_time.to_sec(), time.to_sec()))
+            self._oldest_buffer_time = time
+
 
     def _initialized(self):
         return self._last_time is not None

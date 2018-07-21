@@ -34,35 +34,64 @@ class RoobmaFilter(object):
 
             self._last_msg_time = rospy.Time(0)
 
+            self._queue = []
+            self._last_fusion_time = rospy.Time(0)
+
     def callback(self, msg):
         with self._lock:
-            time = msg.header.stamp
-            assert time >= self._last_msg_time
-            self._last_msg_time = time
+            if msg.header.stamp < self._last_fusion_time:
+                rospy.logerr(
+                        'Roomba filter received message older than fusion horizon, skipping')
+                return
+            self._queue.append(msg)
+            self._queue.sort(key=lambda msg: msg.header.stamp)
 
-            if self._world_fixed_frame is None:
-                self._world_fixed_frame = msg.header.frame_id
-            elif msg.header.frame_id != self._world_fixed_frame:
-                raise Exception(('Message in frame "{}" passed to roomba'
-                              + 'filter, frame "{}" expected')
-                               .format(msg.header.frame_id,
-                                       self._world_fixed_frame))
+    def _process_msg(self, msg):
+        time = msg.header.stamp
+        assert time >= self._last_msg_time
+        self._last_msg_time = time
 
-            self._decrement_counters(msg)
-            self._prune_filters(time)
+        if self._world_fixed_frame is None:
+            self._world_fixed_frame = msg.header.frame_id
+        elif msg.header.frame_id != self._world_fixed_frame:
+            raise Exception(('Message in frame "{}" passed to roomba'
+                          + 'filter, frame "{}" expected')
+                           .format(msg.header.frame_id,
+                                   self._world_fixed_frame))
 
-            for roomba in msg.roombas:
-                f = self._get_filter_for_roomba(time, roomba)
-                f['filter'].update(time, roomba)
-                f['last_time'] = time
+        self._decrement_counters(msg)
+        self._prune_filters(time)
 
-            self._publish(time)
+        for roomba in msg.roombas:
+            f = self._get_filter_for_roomba(time, roomba)
+            f['filter'].update(time, roomba)
+            f['last_time'] = time
+
+        self._publish(time)
 
     @staticmethod
     def mahalanobis_distance(pos, center, covariance):
         diff = pos - center
         distance = diff.T.dot(np.linalg.inv(covariance)).dot(diff)[0,0]
         return distance
+
+    def run(self):
+        FUSION_HORIZON = rospy.Duration(0.1)
+        rate = rospy.Rate(30)
+        while not rospy.is_shutdown():
+            curr_time = rospy.Time.now()
+            fusion_time = curr_time - FUSION_HORIZON
+            with self._lock:
+                for i, msg in enumerate(self._queue):
+                    if msg.header.stamp > fusion_time:
+                        del self._queue[:i]
+                        break
+                    self._process_msg(msg)
+                else:
+                    # We didn't hit any messages newer than the fusion time, so
+                    # clear the whole queue
+                    self._queue = []
+            rate.sleep()
 
     def _decrement_counters(self, msg):
         '''
@@ -184,5 +213,10 @@ class RoobmaFilter(object):
 
 if __name__ == '__main__':
     rospy.init_node('roomba_filter')
+
+    rate = rospy.Rate(30)
+    while not rospy.is_shutdown() and rospy.Time.now() == rospy.Time(0):
+        rate.sleep()
+
     roomba_filter = RoobmaFilter()
-    rospy.spin()
+    roomba_filter.run()
