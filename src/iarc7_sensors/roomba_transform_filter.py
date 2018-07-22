@@ -20,10 +20,10 @@ class RoombaTransformFilter(object):
                 OdometryArray,
                 self._callback)
 
-        self._obstacle_sub = rospy.Subscriber(
-                '/obstacles',
-                ObstacleArray,
-                self._obstacle_callback)
+#        self._obstacle_sub = rospy.Subscriber(
+#                '/obstacles',
+#                ObstacleArray,
+#                self._obstacle_callback)
 
         try:
             rospy.spin()
@@ -53,14 +53,14 @@ class RoombaTransformFilter(object):
                 transform_msg = self._construct_transform(odom)
                 self._transform_broadcaster.sendTransform(transform_msg)
 
-    def _obstacle_callback(self, msg):
-        with self._lock:
-            if (len(msg.obstacles)
-                    and self._last_published_stamp >= msg.obstacles[0].header.stamp):
-                return
-            for obstacle in msg.obstacles:
-                transform_msg = self._construct_transform(obstacle.odom)
-                self._transform_broadcaster.sendTransform(transform_msg)
+    #def _obstacle_callback(self, msg):
+    #    with self._lock:
+    #        if (len(msg.obstacles)
+    #                and self._last_published_stamp >= msg.obstacles[0].header.stamp):
+    #            return
+    #        for obstacle in msg.obstacles:
+    #            transform_msg = self._construct_transform(obstacle.odom)
+    #            self._transform_broadcaster.sendTransform(transform_msg)
 
 if __name__ == '__main__':
     RoombaTransformFilter()
