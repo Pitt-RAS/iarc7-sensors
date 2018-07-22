@@ -20,7 +20,7 @@ class ObstacleFilter(object):
             rospy.Subscriber('/detected_obstacles',
                              ObstacleArray,
                              make_safe_callback(self.callback))
-            self._pub = rospy.Publisher('/blah_blah_obstacles', ObstacleArray, queue_size=10)
+            self._pub = rospy.Publisher('/obstacles', ObstacleArray, queue_size=10)
 
             # TODO: this won't work for multiple cameras yet
 
@@ -74,7 +74,7 @@ class ObstacleFilter(object):
         return distance
 
     def run(self):
-        FUSION_HORIZON = rospy.Duration(0.1)
+        FUSION_HORIZON = rospy.Duration(0.3)
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
             curr_time = rospy.Time.now()
@@ -104,7 +104,7 @@ class ObstacleFilter(object):
         Find the best filter for the given obstacle observation at the given time
         If one doesn't exist, create it
         '''
-        MATCH_MAHALANOBIS_THRESHOLD = 50
+        MATCH_MAHALANOBIS_THRESHOLD = 100
         OBSTACLE_RADIUS = 0.15
         MATCH_DISTANCE_THRESHOLD = 1.0
         best_filter = None
@@ -182,7 +182,7 @@ class ObstacleFilter(object):
         TIME_THRESHOLD = rospy.Duration(5.0)
 
         # Max position uncertainty
-        STDDEV_THRESHOLD = 0.5
+        STDDEV_THRESHOLD = 2.0
 
         for i in range(len(self._filters)-1, -1, -1):
             f = self._filters[i]
