@@ -182,6 +182,8 @@ def process_depth_callback(data, camera_info):
         mask = np.where(labels == i)
         masks = np.array_split(mask[0], 3)
         top_third, middle_third, bottom_third = masks
+        if not len(top_third) or not len(middle_third) or not len(bottom_third):
+            continue
         
         # Isolate the vectors pointing to the top third of the obstacle
         top_third_vectors = sampled_obstacle_points[top_third,:]
@@ -233,10 +235,10 @@ def process_depth_callback(data, camera_info):
         obstacle.odom.pose.pose.position.y = map_coordinates[1]
         obstacle.odom.pose.pose.position.z = 0
 
-        obstacle.odom.pose.covariance[0] = 0.04
+        obstacle.odom.pose.covariance[0] = 0.4
         obstacle.odom.pose.covariance[1] = 0.0
         obstacle.odom.pose.covariance[6] = 0.0
-        obstacle.odom.pose.covariance[7] = 0.04
+        obstacle.odom.pose.covariance[7] = 0.4
 
         obstacle.base_height = 0.1
         obstacle.base_radius = 0.15
