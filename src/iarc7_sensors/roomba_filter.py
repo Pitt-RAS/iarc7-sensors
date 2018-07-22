@@ -14,7 +14,7 @@ from nav_msgs.msg import Odometry
 from iarc7_sensors.roomba_filter.single_roomba_filter import SingleRoombaFilter
 from ros_utils.make_safe_callback import make_safe_callback
 
-class RoobmaFilter(object):
+class RoombaFilter(object):
     def __init__(self):
         self._lock = threading.Lock()
         with self._lock:
@@ -91,6 +91,7 @@ class RoobmaFilter(object):
                     # We didn't hit any messages newer than the fusion time, so
                     # clear the whole queue
                     self._queue = []
+                self._last_fusion_time = fusion_time
             rate.sleep()
 
     def _decrement_counters(self, msg):
@@ -135,7 +136,7 @@ class RoobmaFilter(object):
             filter_cov = np.array([
                 [odom.pose.covariance[0], odom.pose.covariance[1]],
                 [odom.pose.covariance[6], odom.pose.covariance[7]]], dtype=float)
-            mahalanobis_distance = RoobmaFilter.mahalanobis_distance(
+            mahalanobis_distance = RoombaFilter.mahalanobis_distance(
                     pos, filter_pos, filter_cov + pos_cov)
             distance = np.linalg.norm(pos - filter_pos)
 
@@ -155,7 +156,7 @@ class RoobmaFilter(object):
                 and best_distance < MATCH_DISTANCE_THRESHOLD)
             or best_distance < ROOMBA_RADIUS):
             if second_best_mahalanobis - best_mahalanobis < 0.3:
-                rospy.logerr(('Roobma filter not sure which filter to fuse'
+                rospy.logerr(('Roomba filter not sure which filter to fuse'
                         + ' measurement\n%s\nat time %.3f.  Best is at location'
                         + ' \n%s\n with covariance \n%s\n (mahalanobis %f), second best'
                         + ' is at location \n%s\n with covariance \n%s\n (mahalanobis %f)')
@@ -218,5 +219,5 @@ if __name__ == '__main__':
     while not rospy.is_shutdown() and rospy.Time.now() == rospy.Time(0):
         rate.sleep()
 
-    roomba_filter = RoobmaFilter()
+    roomba_filter = RoombaFilter()
     roomba_filter.run()

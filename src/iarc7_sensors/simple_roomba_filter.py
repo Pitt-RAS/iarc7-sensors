@@ -12,7 +12,7 @@ from nav_msgs.msg import Odometry
 from iarc7_sensors.roomba_filter.single_roomba_filter import SingleRoombaFilter
 from ros_utils.make_safe_callback import make_safe_callback
 
-class SimpleRoobmaFilter(object):
+class SimpleRoombaFilter(object):
     def __init__(self):
         self._lock = threading.Lock()
         with self._lock:
@@ -77,5 +77,5 @@ class SimpleRoobmaFilter(object):
 
 if __name__ == '__main__':
     rospy.init_node('simple_roomba_filter')
-    simple_roomba_filter = SimpleRoobmaFilter()
+    simple_roomba_filter = SimpleRoombaFilter()
     rospy.spin()
