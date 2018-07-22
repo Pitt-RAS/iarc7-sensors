@@ -6,9 +6,11 @@ import math
 import numpy as np
 import rospy
 import threading
+import uuid
 
 from iarc7_msgs.msg import ObstacleArray
 from nav_msgs.msg import Odometry
+from visualization_msgs.msg import Marker, MarkerArray
 
 from iarc7_sensors.roomba_filter.single_obstacle_filter import SingleObstacleFilter
 from ros_utils.make_safe_callback import make_safe_callback
@@ -21,6 +23,8 @@ class ObstacleFilter(object):
                              ObstacleArray,
                              make_safe_callback(self.callback))
             self._pub = rospy.Publisher('/obstacles', ObstacleArray, queue_size=10)
+            self._marker_pub = rospy.Publisher(
+                    '/obstacle_markers', MarkerArray, queue_size=10)
 
             # TODO: this won't work for multiple cameras yet
 
@@ -204,9 +208,42 @@ class ObstacleFilter(object):
 
     def _publish(self, time):
         out_msg = ObstacleArray()
+
+        marker_array = MarkerArray()
+
         for f in self._filters:
             obstacle = f['filter'].get_state(time)
             out_msg.obstacles.append(obstacle)
+
+            marker = Marker()
+            marker.header.stamp = time
+            marker.header.frame_id = 'map'
+
+            marker.ns = 'obstacles'
+
+            marker.id = uuid.UUID('{'+obstacle.odom.child_frame_id[len('obstacle-'):-len('/base_link')]+'}').int % (2**31)
+
+            marker.type = Marker.CYLINDER
+            marker.action = Marker.ADD
+            marker.pose.orientation.w = 1.0
+
+            marker.scale.x = obstacle.pipe_radius
+            marker.scale.y = obstacle.pipe_radius
+            marker.scale.z = obstacle.pipe_height
+
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+
+            marker.lifetime = rospy.Duration(1.0)
+
+            marker.pose.position.x = obstacle.odom.pose.pose.position.x
+            marker.pose.position.y = obstacle.odom.pose.pose.position.y
+            marker.pose.position.z = obstacle.pipe_height / 2.
+            marker_array.markers.append(marker)
+
+        self._marker_pub.publish(marker_array)
         self._pub.publish(out_msg)
 
 if __name__ == '__main__':
