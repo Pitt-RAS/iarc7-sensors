@@ -23,6 +23,16 @@ camera = PinholeCameraModel()
 bridge = CvBridge()
 
 def process_depth_callback(data, camera_info):
+    global earliest_allowed_time
+    if earliest_allowed_time is None:
+        trans = tf_buffer.lookup_transform(data.header.frame_id,
+                                           'map',
+                                           rospy.Time(0),
+                                           rospy.Duration(10.0))
+        earliest_allowed_time = trans.header.stamp
+
+    if data.header.stamp < earliest_allowed_time:
+        return
 
     camera.fromCameraInfo(camera_info)
 
@@ -195,12 +205,10 @@ def process_depth_callback(data, camera_info):
     obstacle_pub.publish(obstacles)
 
 def get_calibration_parameters(parameters):
-
     camera.fromCameraInfo(parameters)
     camera_info_sub.unregister()
-    
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     rospy.init_node('obstacle_detector_r200')
 
     image_sub = message_filters.Subscriber("/camera/depth/image_rect_raw", Image)
@@ -210,6 +218,8 @@ if __name__ == '__main__':
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    earliest_allowed_time = None
 
     ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
     ts.registerCallback(process_depth_callback)

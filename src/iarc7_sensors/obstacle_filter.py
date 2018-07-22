@@ -20,7 +20,7 @@ class ObstacleFilter(object):
             rospy.Subscriber('/detected_obstacles',
                              ObstacleArray,
                              make_safe_callback(self.callback))
-            self._pub = rospy.Publisher('/obstacles', ObstacleArray, queue_size=10)
+            self._pub = rospy.Publisher('/blah_blah_obstacles', ObstacleArray, queue_size=10)
 
             # TODO: this won't work for multiple cameras yet
 
@@ -89,6 +89,7 @@ class ObstacleFilter(object):
                     # We didn't hit any messages newer than the fusion time, so
                     # clear the whole queue
                     self._queue = []
+                self._last_fusion_time = fusion_time
             rate.sleep()
 
     def _decrement_counters(self, msg):
@@ -133,7 +134,7 @@ class ObstacleFilter(object):
             filter_cov = np.array([
                 [odom.pose.covariance[0], odom.pose.covariance[1]],
                 [odom.pose.covariance[6], odom.pose.covariance[7]]], dtype=float)
-            mahalanobis_distance = RoobmaFilter.mahalanobis_distance(
+            mahalanobis_distance = ObstacleFilter.mahalanobis_distance(
                     pos, filter_pos, filter_cov + pos_cov)
             distance = np.linalg.norm(pos - filter_pos)
 
