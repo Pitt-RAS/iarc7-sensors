@@ -55,7 +55,8 @@ class RoombaTransformFilter(object):
 
     def _obstacle_callback(self, msg):
         with self._lock:
-            if len(msg.obstacles) and self._last_published_stamp >= msg.data[0].header.stamp:
+            if (len(msg.obstacles)
+                    and self._last_published_stamp >= msg.obstacles[0].header.stamp):
                 return
             for obstacle in msg.obstacles:
                 transform_msg = self._construct_transform(obstacle.odom)
