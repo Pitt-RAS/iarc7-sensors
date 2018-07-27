@@ -231,6 +231,10 @@ def process_depth_callback(data, camera_info):
 
         map_coordinates = map_vector_to_base_center + m_to_o_translation
 
+        obstacle.odom.header.stamp = data.header.stamp
+        obstacle.odom.header.frame_id = 'map'
+        obstacle.odom.header.frame_id = 'DEADBEEF'
+
         obstacle.odom.pose.pose.position.x = map_coordinates[0]
         obstacle.odom.pose.pose.position.y = map_coordinates[1]
         obstacle.odom.pose.pose.position.z = 0
