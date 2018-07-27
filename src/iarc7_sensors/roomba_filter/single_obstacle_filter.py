@@ -71,6 +71,7 @@ class SingleObstacleFilter(object):
 
             obstacle = Obstacle()
             obstacle.header.stamp = time
+            obstacle.header.frame_id = self._world_fixed_frame
 
             obstacle.base_height = self._curr_base_height
             obstacle.base_radius = self._curr_base_radius

@@ -207,7 +207,11 @@ class ObstacleFilter(object):
                 continue
 
     def _publish(self, time):
+        assert time != rospy.Time(0)
+
         out_msg = ObstacleArray()
+        out_msg.header.stamp = time
+        out_msg.header.frame_id = 'map'
 
         marker_array = MarkerArray()
 
