@@ -46,6 +46,8 @@
         <node name="republish_obstacle_detections" pkg="iarc7_sensors"
             type="republish_obstacle_markers.py">
         </node>
+
+        <node name="obstacle_filter" pkg="iarc7_sensors" type="obstacle_filter.py" />
     </group>
     <!-- else: -->
     <group if="$(eval str(arg('platform')) in ('1.9', 'crazyflie'))">
