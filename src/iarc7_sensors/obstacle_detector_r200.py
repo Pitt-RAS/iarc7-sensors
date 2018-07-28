@@ -252,10 +252,10 @@ def process_depth_callback(data, camera_info):
         obstacle.odom.pose.pose.position.y = map_coordinates[1]
         obstacle.odom.pose.pose.position.z = 0
 
-        obstacle.odom.pose.covariance[0] = 0.4
+        obstacle.odom.pose.covariance[0] = 1.0
         obstacle.odom.pose.covariance[1] = 0.0
         obstacle.odom.pose.covariance[6] = 0.0
-        obstacle.odom.pose.covariance[7] = 0.4
+        obstacle.odom.pose.covariance[7] = 1.0
 
         obstacle.base_height = 0.1
         obstacle.base_radius = 0.15
