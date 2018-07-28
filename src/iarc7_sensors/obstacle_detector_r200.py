@@ -61,6 +61,9 @@ def process_depth_callback(data, camera_info):
         earliest_allowed_time = trans.header.stamp
 
     if data.header.stamp < earliest_allowed_time:
+        rospy.logerr('Received frame with stamp %.3f before earliest allowed %.3f',
+                data.header.stamp.to_sec(),
+                earliest_allowed_time.to_sec())
         return
 
     camera.fromCameraInfo(camera_info)
