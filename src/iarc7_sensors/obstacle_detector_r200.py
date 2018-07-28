@@ -114,7 +114,7 @@ def process_depth_callback(data, camera_info):
     # pixels without depth information have a pixel value of 0, so we 
     # ignore all of those
     # Also throw out points that are far away
-    good_indices = np.where((depth > 1) & (depth < 5 * 1000))
+    good_indices = np.where((depth > 0.6 * 1000) & (depth < 5 * 1000))
 
     row_coords = good_indices[0]
     column_coords = good_indices[1]
