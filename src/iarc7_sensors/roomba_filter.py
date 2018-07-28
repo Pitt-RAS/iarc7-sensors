@@ -77,12 +77,13 @@ class RoombaFilter(object):
             f['last_time'] = time
             seen_filters.append(f)
 
+        LEAKAGE_RATE = 5
         self._update_scores(time,
                             dt,
                             seen_filters,
                             camera_pos_confidence,
                             camera_neg_confidence,
-                            leakage_rate,
+                            LEAKAGE_RATE,
                             msg.detection_region)
 
         self._publish(time)
@@ -269,6 +270,10 @@ class RoombaFilter(object):
                     f['score'] -= camera_neg_confidence
                 else:
                     f['score'] -= leakage_rate * dt
+
+            MAX_SCORE = 10.
+            if f['score'] > MAX_SCORE:
+                f['score'] = MAX_SCORE
 
 if __name__ == '__main__':
     rospy.init_node('roomba_filter')
