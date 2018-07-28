@@ -174,7 +174,7 @@ def process_depth_callback(data, camera_info):
         min_samples = 20
     db = DBSCAN(min_samples=min_samples,
                 algorithm='ball_tree',
-                eps = .15,
+                eps = .25,
                 leaf_size = 20,
                 metric = 'manhattan').fit(sampled_obstacle_points)
 
