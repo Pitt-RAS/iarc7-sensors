@@ -78,7 +78,7 @@ class ObstacleFilter(object):
         return distance
 
     def run(self):
-        FUSION_HORIZON = rospy.Duration(0.3)
+        FUSION_HORIZON = rospy.Duration(0.07)
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
             curr_time = rospy.Time.now()
@@ -240,7 +240,7 @@ class ObstacleFilter(object):
             marker.color.b = 0.0
             marker.color.a = 1.0
 
-            marker.lifetime = rospy.Duration(1.0)
+            marker.lifetime = rospy.Duration(0.2)
 
             marker.pose.position.x = obstacle.odom.pose.pose.position.x
             marker.pose.position.y = obstacle.odom.pose.pose.position.y
