@@ -50,7 +50,7 @@ class KalmanFilter2d(object):
             stddev = np.sqrt(variances)
             stddev_max = np.max(stddev)
 
-            if 3*stddev_max < np.linalg.norm(vel):
+            if 3*stddev_max < np.linalg.norm(vel) and np.linalg.norm(vel) > 0.2:
                 return angle_estimate, stddev_max / np.linalg.norm(vel)
             else:
                 return None, None
