@@ -138,7 +138,7 @@ def process_depth_callback(data, camera_info):
 
     # Throw out points on the floor
     z_scalars = np.tensordot(obstacle_points, transformed_z, axes = 1)
-    obstacle_points = obstacle_points[z_scalars + m_to_o_translation[2] >= np.maximum(0.2, 0.2 * depth),:]
+    obstacle_points = obstacle_points[z_scalars + m_to_o_translation[2] >= np.maximum(0.2, 0.1 * depth),:]
 
     # Throw out points that are far away
     #depth_mask = obstacle_points[:,2] < 5.0
@@ -166,7 +166,17 @@ def process_depth_callback(data, camera_info):
     # distance and is just as accurate (in terms of the output clusters).
     if sampled_obstacle_points.shape[0] == 0:
         return
-    db = DBSCAN(min_samples=10, algorithm='ball_tree', eps = .15, leaf_size = 20, metric = 'manhattan').fit(sampled_obstacle_points)
+    if 'right' in data.header.frame_id:
+        min_samples = 20
+    elif 'left':
+        min_samples = 80
+    else:
+        min_samples = 20
+    db = DBSCAN(min_samples=min_samples,
+                algorithm='ball_tree',
+                eps = .15,
+                leaf_size = 20,
+                metric = 'manhattan').fit(sampled_obstacle_points)
 
     # labels is merely an array of integers from 0 to the number of clusters, 
     # specifying which points from dbscan_input belong to which cluster
