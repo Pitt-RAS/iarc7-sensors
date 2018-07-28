@@ -5,6 +5,7 @@ from __future__ import division
 import math
 import numpy as np
 import rospy
+import shapely
 import threading
 
 from iarc7_msgs.msg import RoombaDetectionFrame
@@ -49,6 +50,7 @@ class RoombaFilter(object):
     def _process_msg(self, msg):
         time = msg.header.stamp
         assert time >= self._last_msg_time
+        dt = (time - self._last_msg_time).to_sec()
         self._last_msg_time = time
 
         if self._world_fixed_frame is None:
@@ -59,13 +61,29 @@ class RoombaFilter(object):
                            .format(msg.header.frame_id,
                                    self._world_fixed_frame))
 
-        self._decrement_counters(msg)
+        if msg.camera_id == 'bottom_camera':
+            camera_pos_confidence = 1.0
+            camera_neg_confidence = 1.0
+        else:
+            camera_pos_confidence = 0.8
+            camera_neg_confidence = 0.2
+
         self._prune_filters(time)
 
+        seen_filters = []
         for roomba in msg.roombas:
             f = self._get_filter_for_roomba(time, roomba)
             f['filter'].update(time, roomba)
             f['last_time'] = time
+            seen_filters.append(f)
+
+        self._update_scores(time,
+                            dt,
+                            seen_filters,
+                            camera_pos_confidence,
+                            camera_neg_confidence,
+                            leakage_rate,
+                            msg.detection_region)
 
         self._publish(time)
 
@@ -74,6 +92,14 @@ class RoombaFilter(object):
         diff = pos - center
         distance = diff.T.dot(np.linalg.inv(covariance)).dot(diff)[0,0]
         return distance
+
+    @staticmethod
+    def point_in_poly(pos, poly):
+        point = shapely.geometry.Point(pos.x, pos.y)
+        polygon = shapely.geometry.Polygon([
+            (point.x, point.y) for point in poly.points
+            ])
+        return polygon.contains(point)
 
     def run(self):
         FUSION_HORIZON = rospy.Duration(0.1)
@@ -169,7 +195,8 @@ class RoombaFilter(object):
         rospy.loginfo('Best mahalanobis: %f, best distance %s'%(best_mahalanobis, best_distance))
         new_filter = {
                 'filter': SingleRoombaFilter(self._world_fixed_frame),
-                'last_time': None
+                'last_time': None,
+                'score': 0.0
             }
         self._filters.append(new_filter)
         return new_filter
@@ -186,10 +213,18 @@ class RoombaFilter(object):
         # Max position uncertainty
         STDDEV_THRESHOLD = 0.5
 
+        # Min score
+        SCORE_THRESHOLD = -0.5
+
         for i in range(len(self._filters)-1, -1, -1):
             f = self._filters[i]
             if time - f['last_time'] > TIME_THRESHOLD:
                 rospy.loginfo('Pruning roomba based on time threshold')
+                del self._filters[i]
+                continue
+
+            if f['score'] < SCORE_THRESHOLD:
+                rospy.loginfo('Pruning roomba for score')
                 del self._filters[i]
                 continue
 
@@ -205,12 +240,35 @@ class RoombaFilter(object):
                 continue
 
     def _publish(self, time):
+        SCORE_PUBLISH_THRESHOLD = 0.99
+
         out_msg = OdometryArray()
         for f in self._filters:
+            if f['score'] < SCORE_PUBLISH_THRESHOLD:
+                continue
             odom = f['filter'].get_state(time)
             self._debug_pub.publish(odom)
             out_msg.data.append(odom)
         self._pub.publish(out_msg)
+
+    def _update_scores(self,
+                       time,
+                       dt,
+                       seen_filters,
+                       camera_pos_confidence,
+                       camera_neg_confidence,
+                       leakage_rate,
+                       camera_poly):
+        for f in self._filters:
+            if f in seen_filters:
+                f['score'] += camera_pos_confidence
+            else:
+                odom = f['filter'].get_state(time).odom
+                pos = odom.pose.pose.position
+                if RoombaFilter.point_in_poly(pos, camera_poly):
+                    f['score'] -= camera_neg_confidence
+                else:
+                    f['score'] -= leakage_rate * dt
 
 if __name__ == '__main__':
     rospy.init_node('roomba_filter')
