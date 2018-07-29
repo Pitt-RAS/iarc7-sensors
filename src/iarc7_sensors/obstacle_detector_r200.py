@@ -108,13 +108,21 @@ def process_depth_callback(data, camera_info):
     except CvBridgeError as e:
         print(e)
 
+    # Throw out bad points on sides
+    if 'back' in data.header.frame_id or 'front' in data.header.frame_id:
+        trash_side = 1
+        trash_top = 80
+    else:
+        trash_side = 1
+        trash_top = 1
+
     subsample_factor = 3
-    depth = np.asarray(image)[::subsample_factor,::subsample_factor]
+    depth = np.asarray(image)[trash_top:-trash_top:subsample_factor,trash_side:-1-trash_side:subsample_factor]
 
     # pixels without depth information have a pixel value of 0, so we 
     # ignore all of those
     # Also throw out points that are far away
-    good_indices = np.where((depth > 0.6 * 1000) & (depth < 5 * 1000))
+    good_indices = np.where((depth > 0.6 * 1000) & (depth < 4 * 1000))
 
     row_coords = good_indices[0]
     column_coords = good_indices[1]
@@ -126,8 +134,8 @@ def process_depth_callback(data, camera_info):
     assert obstacle_points.shape[-1] == 3
 
     # Transform the depth values at each pixel into a 3d vector in the optical frame
-    obstacle_points[:,0] = (subsample_factor*column_coords - camera.cx())/(camera.fx())
-    obstacle_points[:,1] = (subsample_factor*row_coords - camera.cy())/(camera.fy())
+    obstacle_points[:,0] = (trash_side + subsample_factor*column_coords - camera.cx())/(camera.fx())
+    obstacle_points[:,1] = (trash_top + subsample_factor*row_coords - camera.cy())/(camera.fy())
 
     obstacle_points[:,0] = np.multiply(obstacle_points[:,0], depth)
     obstacle_points[:,1] = np.multiply(obstacle_points[:,1], depth)
