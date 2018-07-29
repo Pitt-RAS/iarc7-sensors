@@ -110,8 +110,8 @@ def process_depth_callback(data, camera_info):
 
     # Throw out bad points on sides
     if 'back' in data.header.frame_id or 'front' in data.header.frame_id:
-        trash_side = 1
-        trash_top = 80
+        trash_side = 80
+        trash_top = 90
     else:
         trash_side = 1
         trash_top = 1
