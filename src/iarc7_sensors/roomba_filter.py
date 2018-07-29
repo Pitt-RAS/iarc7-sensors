@@ -264,7 +264,7 @@ class RoombaFilter(object):
             if f in seen_filters:
                 f['score'] += camera_pos_confidence
             else:
-                odom = f['filter'].get_state(time).odom
+                odom = f['filter'].get_state(time)
                 pos = odom.pose.pose.position
                 if RoombaFilter.point_in_poly(pos, camera_poly):
                     f['score'] -= camera_neg_confidence
