@@ -6,6 +6,7 @@ import math
 import numpy as np
 import rospy
 import shapely
+import shapely.geometry
 import threading
 
 from iarc7_msgs.msg import RoombaDetectionFrame
