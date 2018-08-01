@@ -64,7 +64,7 @@ class RoombaFilter(object):
 
         if msg.camera_id == 'bottom_camera':
             camera_pos_confidence = 1.0
-            camera_neg_confidence = 1.0
+            camera_neg_confidence = 0.3
         else:
             camera_pos_confidence = 0.8
             camera_neg_confidence = 0.2
@@ -78,7 +78,7 @@ class RoombaFilter(object):
             f['last_time'] = time
             seen_filters.append(f)
 
-        LEAKAGE_RATE = 5
+        LEAKAGE_RATE = 1
         self._update_scores(time,
                             dt,
                             seen_filters,
@@ -134,9 +134,9 @@ class RoombaFilter(object):
         Find the best filter for the given roomba observation at the given time
         If one doesn't exist, create it
         '''
-        MATCH_MAHALANOBIS_THRESHOLD = 50
+        MATCH_MAHALANOBIS_THRESHOLD = 1e100 # 50
         ROOMBA_RADIUS = 0.15
-        MATCH_DISTANCE_THRESHOLD = 1.0
+        MATCH_DISTANCE_THRESHOLD = 1.5
         best_filter = None
         best_filter_pos = None
         best_filter_cov = None
@@ -210,10 +210,10 @@ class RoombaFilter(object):
         :param time: current time
         '''
         # Max time without sighting
-        TIME_THRESHOLD = rospy.Duration(5.0)
+        TIME_THRESHOLD = rospy.Duration(7.0)
 
         # Max position uncertainty
-        STDDEV_THRESHOLD = 0.5
+        STDDEV_THRESHOLD = float('Inf')
 
         # Min score
         SCORE_THRESHOLD = -0.5
