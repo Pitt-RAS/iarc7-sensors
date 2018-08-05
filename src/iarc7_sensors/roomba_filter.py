@@ -78,7 +78,7 @@ class RoombaFilter(object):
             f['last_time'] = time
             seen_filters.append(f)
 
-        LEAKAGE_RATE = 1
+        LEAKAGE_RATE = 0.5
         self._update_scores(time,
                             dt,
                             seen_filters,
@@ -99,12 +99,12 @@ class RoombaFilter(object):
     def point_in_poly(pos, poly):
         point = shapely.geometry.Point(pos.x, pos.y)
         polygon = shapely.geometry.Polygon([
-            (point.x, point.y) for point in poly.points
+            (point_.x, point_.y) for point_ in poly.points
             ])
         return polygon.contains(point)
 
     def run(self):
-        FUSION_HORIZON = rospy.Duration(0.1)
+        FUSION_HORIZON = rospy.Duration(0.250)
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
             curr_time = rospy.Time.now()
