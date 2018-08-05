@@ -175,11 +175,11 @@ def process_depth_callback(data, camera_info):
     if sampled_obstacle_points.shape[0] == 0:
         return
     if 'right' in data.header.frame_id:
-        min_samples = 20
+        min_samples = 40
     elif 'left':
         min_samples = 80
     else:
-        min_samples = 20
+        min_samples = 40
     db = DBSCAN(min_samples=min_samples,
                 algorithm='ball_tree',
                 eps = .25,
