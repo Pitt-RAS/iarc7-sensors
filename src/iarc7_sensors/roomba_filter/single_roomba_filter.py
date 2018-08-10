@@ -99,10 +99,9 @@ class SingleRoombaFilter(object):
                         orientation = seeder_orientation_estimate
                         orientation_uncertainty = seeder_uncertainty
 
-                # KILL THE EKF
-                orientation = None
+                USE_EKF = False
 
-                if orientation is not None:
+                if USE_EKF and orientation is not None:
                     self._state = SingleRoombaFilterState.HAVE_ORIENTATION
                     measurements_iter = iter(self._measurements)
                     first_time, first_msg = next(measurements_iter)
