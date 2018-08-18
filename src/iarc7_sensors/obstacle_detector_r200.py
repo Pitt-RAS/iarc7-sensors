@@ -17,12 +17,54 @@ from sklearn.cluster import DBSCAN
 from iarc7_msgs.msg import Obstacle, ObstacleArray
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+from sensor_msgs.msg import PointCloud2, PointField
 import message_filters
 
 camera = PinholeCameraModel()
 bridge = CvBridge()
 
+def xyz_array_to_pointcloud2(points, stamp=None, frame_id=None):
+    '''
+    Create a sensor_msgs.PointCloud2 from an array
+    of points.
+    '''
+    msg = PointCloud2()
+    if stamp:
+        msg.header.stamp = stamp
+    if frame_id:
+        msg.header.frame_id = frame_id
+    if len(points.shape) == 3:
+        msg.height = points.shape[1]
+        msg.width = points.shape[0]
+    else:
+        msg.height = 1
+        msg.width = len(points)
+    msg.fields = [
+        PointField('x', 0, PointField.FLOAT32, 1),
+        PointField('y', 4, PointField.FLOAT32, 1),
+        PointField('z', 8, PointField.FLOAT32, 1)]
+    msg.is_bigendian = False
+    msg.point_step = 12
+    msg.row_step = 12*points.shape[0]
+    msg.is_dense = int(np.isfinite(points).all())
+    msg.data = np.asarray(points, np.float32).tostring()
+
+    return msg
+
 def process_depth_callback(data, camera_info):
+    global earliest_allowed_time
+    if earliest_allowed_time is None:
+        trans = tf_buffer.lookup_transform(data.header.frame_id,
+                                           'map',
+                                           rospy.Time(0),
+                                           rospy.Duration(10.0))
+        earliest_allowed_time = trans.header.stamp
+
+    if data.header.stamp < earliest_allowed_time:
+        rospy.logerr('Received frame with stamp %.3f before earliest allowed %.3f',
+                data.header.stamp.to_sec(),
+                earliest_allowed_time.to_sec())
+        return
 
     camera.fromCameraInfo(camera_info)
 
@@ -56,52 +98,93 @@ def process_depth_callback(data, camera_info):
     transformed_y = np.matmul(m_to_o_rot_matrix, unit_y)
     transformed_z = np.matmul(m_to_o_rot_matrix, unit_z)
 
+    # The translation from the center of the map to the center of the optical frame
+    m_to_o_translation = np.array([o_to_m_trans.transform.translation.x,
+                       o_to_m_trans.transform.translation.y,
+                       o_to_m_trans.transform.translation.z])
+
     try:
         image = bridge.imgmsg_to_cv2(data, "passthrough")
     except CvBridgeError as e:
         print(e)
 
-    depth = np.asarray(image)
+    # Throw out bad points on sides
+    if 'back' in data.header.frame_id or 'front' in data.header.frame_id:
+        trash_side = 80
+        trash_top = 90
+    else:
+        trash_side = 1
+        trash_top = 1
+
+    subsample_factor = 3
+    depth = np.asarray(image)[trash_top:-trash_top:subsample_factor,trash_side:-1-trash_side:subsample_factor]
 
     # pixels without depth information have a pixel value of 0, so we 
     # ignore all of those
-    good_indices = np.where(depth > 1)
+    # Also throw out points that are far away
+    good_indices = np.where((depth > 0.6 * 1000) & (depth < 4 * 1000))
 
     row_coords = good_indices[0]
     column_coords = good_indices[1]
+    # Convert depth values from millimeters to meters
+    depth = depth[row_coords, column_coords] / 1000.0
+
+    obstacle_points = np.zeros((len(row_coords), 3))
+
+    assert obstacle_points.shape[-1] == 3
+
+    # Transform the depth values at each pixel into a 3d vector in the optical frame
+    obstacle_points[:,0] = (trash_side + subsample_factor*column_coords - camera.cx())/(camera.fx())
+    obstacle_points[:,1] = (trash_top + subsample_factor*row_coords - camera.cy())/(camera.fy())
+
+    obstacle_points[:,0] = np.multiply(obstacle_points[:,0], depth)
+    obstacle_points[:,1] = np.multiply(obstacle_points[:,1], depth)
+
+    obstacle_points[:,2] = depth
+
+    obstacle_points = obstacle_points.astype(np.float32)
+
+    # Throw out points on the floor
+    z_scalars = np.tensordot(obstacle_points, transformed_z, axes = 1)
+    obstacle_points = obstacle_points[z_scalars + m_to_o_translation[2] >= np.maximum(0.2, 0.1 * depth),:]
+
+    # Throw out points that are far away
+    #depth_mask = obstacle_points[:,2] < 5.0
+    #obstacle_points = obstacle_points[depth_mask,:]
 
     # Enforce a upper bound on the number of points going into dbscan to prevent the CPU 
     # from getting annihilated
-    prob_true = 400.0/len(row_coords) if len(row_coords) > 400 else 1
-    random_mask = np.random.choice([True, False], len(row_coords), p = [prob_true, 1-prob_true])
+    MAX_POINTS = 400.
+    prob_true = MAX_POINTS/len(obstacle_points) if len(obstacle_points) > MAX_POINTS else 1
+    random_mask = np.random.choice([True, False],
+                                   len(obstacle_points),
+                                   p = [prob_true, 1-prob_true])
 
-    row_coords = row_coords[random_mask]
-    column_coords = column_coords[random_mask]
-    masked_depth = depth[row_coords, column_coords]
+    sampled_obstacle_points = obstacle_points[random_mask]
 
-    # Convert depth values from millimeters to meters
-    masked_depth = masked_depth/1000.0
-
-    sampled_obstacle_points = np.zeros((len(row_coords), 3))
-
-    assert sampled_obstacle_points.shape[-1] == 3
-
-    # Transform the depth values at each pixel into a 3d vector in the optical frame
-    sampled_obstacle_points[:,0] = (column_coords- camera.cx())/(camera.fx())
-    sampled_obstacle_points[:,1] = (row_coords - camera.cy())/(camera.fy())
-
-    sampled_obstacle_points[:,0] = np.multiply(sampled_obstacle_points[:,0], masked_depth)
-    sampled_obstacle_points[:,1] = np.multiply(sampled_obstacle_points[:,1], masked_depth)
-
-    sampled_obstacle_points[:,2] = masked_depth
-    
-    sampled_obstacle_points = sampled_obstacle_points.astype(np.float32)
+    debug_sampled_points = True
+    if debug_sampled_points:
+        pointcloud = xyz_array_to_pointcloud2(
+                sampled_obstacle_points, data.header.stamp, data.header.frame_id)
+        pointcloud_pub.publish(pointcloud)
 
     # eps - min distance between clusters to be considered separate clusters (currently about 
     # the radius of a roomba) 
     # The manhattan metric is chosen because it is computationally cheaper than calculating the euclidean
     # distance and is just as accurate (in terms of the output clusters).
-    db = DBSCAN(min_samples=10, algorithm='ball_tree', eps = .15, leaf_size = 20, metric = 'manhattan').fit(sampled_obstacle_points)
+    if sampled_obstacle_points.shape[0] == 0:
+        return
+    if 'right' in data.header.frame_id:
+        min_samples = 40
+    elif 'left':
+        min_samples = 80
+    else:
+        min_samples = 40
+    db = DBSCAN(min_samples=min_samples,
+                algorithm='ball_tree',
+                eps = .25,
+                leaf_size = 20,
+                metric = 'manhattan').fit(sampled_obstacle_points)
 
     # labels is merely an array of integers from 0 to the number of clusters, 
     # specifying which points from dbscan_input belong to which cluster
@@ -120,6 +203,8 @@ def process_depth_callback(data, camera_info):
         mask = np.where(labels == i)
         masks = np.array_split(mask[0], 3)
         top_third, middle_third, bottom_third = masks
+        if not len(top_third) or not len(middle_third) or not len(bottom_third):
+            continue
         
         # Isolate the vectors pointing to the top third of the obstacle
         top_third_vectors = sampled_obstacle_points[top_third,:]
@@ -137,11 +222,6 @@ def process_depth_callback(data, camera_info):
         # Transform the vector to the top of the obstacle from the optical frame to 
         # the map frame
         map_vector_to_obs = np.matmul(o_to_m_rot_matrix, top_third_vectors[max_z,:])
-
-        # The translation from the center of the map to the center of the optical frame
-        m_to_o_translation = np.array([o_to_m_trans.transform.translation.x,
-                           o_to_m_trans.transform.translation.y,
-                           o_to_m_trans.transform.translation.z])
 
         obstacle.pipe_height = map_vector_to_obs[2] + m_to_o_translation[2]
 
@@ -172,14 +252,18 @@ def process_depth_callback(data, camera_info):
 
         map_coordinates = map_vector_to_base_center + m_to_o_translation
 
+        obstacle.odom.header.stamp = data.header.stamp
+        obstacle.odom.header.frame_id = 'map'
+        obstacle.odom.header.frame_id = 'DEADBEEF'
+
         obstacle.odom.pose.pose.position.x = map_coordinates[0]
         obstacle.odom.pose.pose.position.y = map_coordinates[1]
         obstacle.odom.pose.pose.position.z = 0
 
-        obstacle.odom.pose.covariance[0] = 0.04
+        obstacle.odom.pose.covariance[0] = 1.0
         obstacle.odom.pose.covariance[1] = 0.0
         obstacle.odom.pose.covariance[6] = 0.0
-        obstacle.odom.pose.covariance[7] = 0.04
+        obstacle.odom.pose.covariance[7] = 1.0
 
         obstacle.base_height = 0.1
         obstacle.base_radius = 0.15
@@ -195,21 +279,22 @@ def process_depth_callback(data, camera_info):
     obstacle_pub.publish(obstacles)
 
 def get_calibration_parameters(parameters):
-
     camera.fromCameraInfo(parameters)
     camera_info_sub.unregister()
-    
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     rospy.init_node('obstacle_detector_r200')
 
     image_sub = message_filters.Subscriber("/camera/depth/image_rect_raw", Image)
     camera_info_sub = message_filters.Subscriber("/camera/depth/camera_info", CameraInfo)
 
     obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray, queue_size=5)
+    pointcloud_pub = rospy.Publisher('~clustering_pointcloud', PointCloud2, queue_size=1)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    earliest_allowed_time = None
 
     ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
     ts.registerCallback(process_depth_callback)
