@@ -1,0 +1,26 @@
+digraph G {
+"forward_camera_ir2_frame" -> "forward_camera_ir2_optical_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_link" -> "forward_camera_rgb_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_link" -> "forward_camera_ir2_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_link" -> "forward_camera_ir_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "center_of_lift"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "lidarlite"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "short_distance_lidar"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"map" -> "level_quad"[label=" Broadcaster: /robot_localization\nAverage rate: 98.02\nBuffer length: 5.05\nMost recent transform: 1531441748.74\nOldest transform: 1531441743.69\n"];
+"forward_camera_ir_frame" -> "forward_camera_ir_optical_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "foot1"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "forward_camera_link"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "foot3"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "foot2"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "foot4"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"bottom_camera_link" -> "bottom_camera_rgb_optical_frame"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_link" -> "forward_camera_depth_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_rgb_frame" -> "forward_camera_rgb_optical_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "bottom_camera_link"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"forward_camera_depth_frame" -> "forward_camera_depth_optical_frame"[label=" Broadcaster: /forward_camera/forward_camera_nodelet_manager\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"quad" -> "base_footprint"[label=" Broadcaster: /static_tf_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1531441748.86"[ shape=plaintext ] ;
+}->"quad";
+}
