@@ -12,8 +12,15 @@
     <group if="$(eval str(arg('platform')) in ('2.0',))">
         <node name="obstacle_detector" pkg="iarc7_sensors" type="obstacle_detector_r200.py">
         </node>
+<<<<<<< Updated upstream
         
         <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle_markers.py">
+||||||| merged common ancestors
+        
+        <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle-markers.py">
+=======
+        <node name="republish_obstacle_detections" pkg="iarc7_sensors" type="republish_obstacle_markers.py">
+>>>>>>> Stashed changes
         </node>
     </group>
     <!-- else: -->

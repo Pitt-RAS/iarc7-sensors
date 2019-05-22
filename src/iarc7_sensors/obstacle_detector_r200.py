@@ -28,9 +28,21 @@ def process_depth_callback(data, camera_info):
     camera.fromCameraInfo(camera_info)
 
     # m_to_o = map_to_optical
+<<<<<<< Updated upstream
     m_to_o_trans = tf_buffer.lookup_transform("forward_camera_depth_optical_frame", "map", data.header.stamp, rospy.Duration(1))
+||||||| merged common ancestors
+    m_to_o_trans = tf_buffer.lookup_transform("camera_depth_optical_frame", "map", data.header.stamp)
+=======
+    m_to_o_trans = tf_buffer.lookup_transform("forward_camera_depth_optical_frame", "map", data.header.stamp)
+>>>>>>> Stashed changes
 
+<<<<<<< Updated upstream
     o_to_m_trans = tf_buffer.lookup_transform("map", "forward_camera_depth_optical_frame", data.header.stamp, rospy.Duration(1))
+||||||| merged common ancestors
+    o_to_m_trans = tf_buffer.lookup_transform("map", "camera_depth_optical_frame", data.header.stamp)
+=======
+    o_to_m_trans = tf_buffer.lookup_transform("map", "forward_camera_depth_optical_frame", data.header.stamp)
+>>>>>>> Stashed changes
 
     m_to_o_quat = np.array([m_to_o_trans.transform.rotation.x,
                            m_to_o_trans.transform.rotation.y,
@@ -193,6 +205,7 @@ if __name__ == '__main__':
 
     rospy.init_node('obstacle_detector_r200')
 
+<<<<<<< Updated upstream
     rospy.sleep(10.)
 
     image_sub = message_filters.Subscriber("/forward_camera/depth/image_raw", Image)
@@ -200,6 +213,11 @@ if __name__ == '__main__':
 
     ts = message_filters.TimeSynchronizer([image_sub, camera_info_sub], 10)
     ts.registerCallback(process_depth_callback)
+||||||| merged common ancestors
+    rospy.Subscriber('/camera/depth/image_raw', Image, process_depth_callback, queue_size = 1)
+=======
+    rospy.Subscriber('/forward_camera/depth/image_raw', Image, process_depth_callback, queue_size = 1)
+>>>>>>> Stashed changes
 
     obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray, queue_size=5)
 
